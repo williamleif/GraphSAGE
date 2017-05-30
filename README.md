@@ -22,6 +22,7 @@ Recent versions of TensorFlow, numpy, scipy, and networkx are required.
 
 The example_unsupervised.sh and example_supervised.sh files contain example usages of the code.
 (example_unsupervised.sh sets a very small max iteration number, which can be increased to improve performance.)
+
 As input, at minimum the code requires that a --train_prefix option is specified which specifies the following data files:
 
 * <train_prefix>-G.json -- "A networkx-specified json file describing the input graph."
