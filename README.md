@@ -20,9 +20,10 @@ Recent versions of TensorFlow, numpy, scipy, and networkx are required.
 
 ### Running the code
 
-The example_unsupervised.sh and example_supervised.sh files contain example usages of the code.
-(example_unsupervised.sh sets a very small max iteration number, which can be increased to improve performance.)
+The example_unsupervised.sh and example_supervised.sh files contain example usages of the code, which use the unsupervised and supervised variants of GraphSAGE, respectively.
+Note that example_unsupervised.sh sets a very small max iteration number, which can be increased to improve performance.
 
+#### Input format
 As input, at minimum the code requires that a --train_prefix option is specified which specifies the following data files:
 
 * <train_prefix>-G.json -- "A networkx-specified json file describing the input graph."
@@ -31,6 +32,7 @@ As input, at minimum the code requires that a --train_prefix option is specified
 * <train_prefix>-feats.npy --- "A numpy-stored array of node features; ordering given by id_map.json"
 * <train_prefix>-walks.txt --- "A text file specifying random walk co-occurrences (one pair per line)" (*only for unsupervised)
 
+#### Model variants 
 The user must also specify a --model, the variants of which are described in detail in the paper:
 * graphsage_mean -- GraphSAGE with mean-based aggregator
 * graphsage_seq -- GraphSAGE with LSTM-based aggregator
@@ -38,10 +40,13 @@ The user must also specify a --model, the variants of which are described in det
 * gcn -- GraphSAGE with GCN-based aggregator
 * n2v -- an implementation of [DeepWalk](https://arxiv.org/abs/1403.6652) (called n2v for short in the code.)
 
+#### Logging directory
 Finally, a --base_log_dir should be specified (it defaults to the current directory). 
 The output of the model and log files will be stored in a subdirectory of the base_log_dir.
 The supervised model will output F1 scores, while the unsupervised model will train embeddings and store them.
 The unsupervised embeddings will be stored at val.npy with val.txt specifying the order of embeddings as a per-line list of node ids.
 Note that the full log outputs and stored embeddings can be 5-10Gb in size (on the full data).
 
-The other inputs and hyperparameters are described in the TensorFlow flags.
+#### Using the output of the unsupervised models
+
+TODO
