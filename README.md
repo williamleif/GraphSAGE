@@ -52,3 +52,9 @@ Note that the full log outputs and stored embeddings can be 5-10Gb in size (on t
 The unsupervised variants of GraphSAGE will output embeddings to the logging directory as described above.
 These embeddings can then be used in downstream machine learning applications.
 The `eval_scripts` directory contains examples of feeding the embeddings into simple logistic classifiers.
+
+#### Running on a new dataset
+
+To run the model on a new dataset, you need to make data files of the format described above. 
+To run random walks for the unsupervised model (and to generate the <prefix>-walks.txt file) 
+you can use the `run_walks` function in `graphsage.utils`.
