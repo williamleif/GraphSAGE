@@ -47,9 +47,10 @@ The user must also specify a --model, the variants of which are described in det
 #### Logging directory
 Finally, a --base_log_dir should be specified (it defaults to the current directory). 
 The output of the model and log files will be stored in a subdirectory of the base_log_dir.
+The path to the logged data will be of the form `<sup/unsup>-<data_prefix>/graphsage-<model_description>/`.
 The supervised model will output F1 scores, while the unsupervised model will train embeddings and store them.
-The unsupervised embeddings will be stored at val.npy with val.txt specifying the order of embeddings as a per-line list of node ids.
-Note that the full log outputs and stored embeddings can be 5-10Gb in size (on the full data).
+The unsupervised embeddings will be stored in a numpy formated file named val.npy with val.txt specifying the order of embeddings as a per-line list of node ids.
+Note that the full log outputs and stored embeddings can be 5-10Gb in size (on the full data when running with the unsupervised variant).
 
 #### Using the output of the unsupervised models
 
