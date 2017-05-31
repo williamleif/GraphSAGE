@@ -4,8 +4,7 @@ import numpy as np
 # DISCLAIMER:
 # Parts of this code file are derived from
 # https://github.com/tkipf/gcn
-# (A full license with proper attributions will be provided in the
-# public repo of this code base)
+# which is under an identical MIT license as GraphSAGE
 
 def uniform(shape, scale=0.05, name=None):
     """Uniform init."""

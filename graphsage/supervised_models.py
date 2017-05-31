@@ -8,11 +8,27 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 class SupervisedGraphsage(models.SampleAndAggregate):
+    """Implementation of supervised GraphSAGE."""
+
     def __init__(self, num_classes,
             placeholders, features, adj, degrees,
             layer_infos, concat=True, aggregator_type="mean", 
             model_size="small", sigmoid_loss=False,
                 **kwargs):
+        '''
+        Args:
+            - placeholders: Stanford TensorFlow placeholder object.
+            - features: Numpy array with node features.
+            - adj: Numpy array with adjacency lists (padded with random re-samples)
+            - degrees: Numpy array with node degrees. 
+            - layer_infos: List of SAGEInfo namedtuples that describe the parameters of all 
+                   the recursive layers. See SAGEInfo definition above.
+            - concat: whether to concatenate during recursive iterations
+            - aggregator_type: how to aggregate neighbor information
+            - model_size: one of "small" and "big"
+            - sigmoid_loss: Set to true if nodes can belong to multiple classes
+        '''
+
         models.GeneralizedModel.__init__(self, **kwargs)
 
         if aggregator_type == "mean":

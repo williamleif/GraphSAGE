@@ -9,9 +9,18 @@ class EdgeMinibatchIterator(object):
     
     """ This minibatch iterator iterates over batches of sampled edges or
     random pairs of co-occuring edges.
+
+    G -- networkx graph
+    id2idx -- dict mapping node ids to index in feature tensor
+    placeholders -- tensorflow placeholders object
+    context_pairs -- if not none, then a list of co-occuring node pairs (from random walks)
+    batch_size -- size of the minibatches
+    max_degree -- maximum size of the downsampled adjacency lists
+    n2v_retrain -- signals that the iterator is being used to add new embeddings to a n2v model
+    fixed_n2v -- signals that the iterator is being used to retrain n2v with only existing nodes as context
     """
     def __init__(self, G, id2idx, 
-            placeholders, context_pairs=None,batch_size=100, max_degree=25, num_neg_samples=20, 
+            placeholders, context_pairs=None, batch_size=100, max_degree=25,
             n2v_retrain=False, fixed_n2v=False,
             **kwargs):
 
@@ -21,7 +30,6 @@ class EdgeMinibatchIterator(object):
         self.placeholders = placeholders
         self.batch_size = batch_size
         self.max_degree = max_degree
-        self.num_neg_samples = num_neg_samples
         self.batch_num = 0
 
         self.nodes = np.random.permutation(G.nodes())
@@ -162,9 +170,17 @@ class NodeMinibatchIterator(object):
     
     """ 
     This minibatch iterator iterates over nodes for supervised learning.
+
+    G -- networkx graph
+    id2idx -- dict mapping node ids to integer values indexing feature tensor
+    placeholders -- standard tensorflow placeholders object for feeding
+    label_map -- map from node ids to class values (integer or list)
+    num_classes -- number of output classes
+    batch_size -- size of the minibatches
+    max_degree -- maximum size of the downsampled adjacency lists
     """
     def __init__(self, G, id2idx, 
-            placeholders, label_map, num_classes, context_pairs=None, 
+            placeholders, label_map, num_classes, 
             batch_size=100, max_degree=25,
             **kwargs):
 

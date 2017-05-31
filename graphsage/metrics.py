@@ -4,10 +4,8 @@ import tensorflow as tf
 # Parts of this code file were originally forked from
 # https://github.com/tkipf/gcn
 # which itself was very inspired by the keras package
-# (A full license with de-anonymized attributions will be provided in the
-# public repo of this code base)
-
 def masked_logit_cross_entropy(preds, labels, mask):
+    """Logit cross-entropy loss with masking."""
     loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=preds, labels=labels)
     loss = tf.reduce_sum(loss, axis=1)
     mask = tf.cast(mask, dtype=tf.float32)
@@ -16,8 +14,8 @@ def masked_logit_cross_entropy(preds, labels, mask):
     return tf.reduce_mean(loss)
 
 def masked_softmax_cross_entropy(preds, labels, mask):
+    """Softmax cross-entropy loss with masking."""
     loss = tf.nn.softmax_cross_entropy_with_logits(logits=preds, labels=labels)
-#    loss = tf.reduce_sum(loss, axis=1)
     mask = tf.cast(mask, dtype=tf.float32)
     mask /= tf.maximum(tf.reduce_sum(mask), tf.constant([1.]))
     loss *= mask
@@ -25,7 +23,7 @@ def masked_softmax_cross_entropy(preds, labels, mask):
 
 
 def masked_l2(preds, actuals, mask):
-    """Softmax cross-entropy loss with masking."""
+    """L2 loss with masking."""
     loss = tf.nn.l2(preds, actuals)
     mask = tf.cast(mask, dtype=tf.float32)
     mask /= tf.reduce_mean(mask)

@@ -9,8 +9,7 @@ FLAGS = flags.FLAGS
 
 
 """
-Classes that are used to sample node neighborhoods during 
-convolutions.
+Classes that are used to sample node neighborhoods
 """
 
 class UniformNeighborSampler(Layer):

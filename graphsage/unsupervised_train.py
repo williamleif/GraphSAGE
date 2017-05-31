@@ -244,7 +244,6 @@ def train(train_data, test_data=None):
         epoch_val_costs.append(0)
         while not minibatch.end():
             # Construct feed dictionary
-            #feed_dict = construct_minibatch_feed_dict(features, G, y_train, train_mask, placeholders)
             feed_dict = minibatch.next_minibatch_feed_dict()
             feed_dict.update({placeholders['dropout']: FLAGS.dropout})
 

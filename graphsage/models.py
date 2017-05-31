@@ -16,8 +16,6 @@ FLAGS = flags.FLAGS
 # Boilerplate parts of this code file were originally forked from
 # https://github.com/tkipf/gcn
 # which itself was very inspired by the keras package
-# (A full license with proper attributions will be provided in the
-# public repo of this code base)
 
 class Model(object):
     def __init__(self, **kwargs):
@@ -97,6 +95,7 @@ class Model(object):
 
 
 class MLP(Model):
+    """ A standard multi-layer perceptron """
     def __init__(self, placeholders, dims, categorical=True, **kwargs):
         super(MLP, self).__init__(**kwargs)
 
@@ -177,7 +176,7 @@ class GeneralizedModel(Model):
         self.opt_op = self.optimizer.minimize(self.loss)
 
 # SAGEInfo is a namedtuple that specifies the parameters 
-# of the recursive sampled GCN layers
+# of the recursive GraphSAGE layers
 SAGEInfo = namedtuple("SAGEInfo",
     ['layer_name', # name of the layer (to get feature embedding etc.)
      'neigh_sampler', # callable neigh_sampler constructor
@@ -187,8 +186,7 @@ SAGEInfo = namedtuple("SAGEInfo",
 
 class SampleAndAggregate(GeneralizedModel):
     """
-    Implementation of a standard 2-step graph convolutional network
-    Uses random sampling on neighborhoods
+    Base implementation of unsupervised GraphSAGE
     """
 
     def __init__(self, placeholders, features, adj, degrees,
@@ -197,9 +195,15 @@ class SampleAndAggregate(GeneralizedModel):
             **kwargs):
         '''
         Args:
-            - layer_infos: List of SGCInfo namedtuples that describe the parameters of all 
-                   the recursive layers. See SGCInfo definition above.
-
+            - placeholders: Stanford TensorFlow placeholder object.
+            - features: Numpy array with node features.
+            - adj: Numpy array with adjacency lists (padded with random re-samples)
+            - degrees: Numpy array with node degrees. 
+            - layer_infos: List of SAGEInfo namedtuples that describe the parameters of all 
+                   the recursive layers. See SAGEInfo definition above.
+            - concat: whether to concatenate during recursive iterations
+            - aggregator_type: how to aggregate neighbor information
+            - model_size: one of "small" and "big"
         '''
         super(SampleAndAggregate, self).__init__(**kwargs)
         if aggregator_type == "mean":
@@ -392,11 +396,11 @@ class SampleAndAggregate(GeneralizedModel):
 class Node2VecModel(GeneralizedModel):
     def __init__(self, placeholders, dict_size, degrees, name=None,
                  nodevec_dim=50, lr=0.001, **kwargs):
-        """ Simple version of Node2Vec algorithm.
+        """ Simple version of Node2Vec/DeepWalk algorithm.
 
         Args:
-            dict_size1: the total number of nodes in set1.
-            dict_size2: the total number of nodes in set2.
+            dict_size: the total number of nodes.
+            degrees: numpy array of node degrees, ordered as in the data's id_map
             nodevec_dim: dimension of the vector representation of node.
             lr: learning rate of optimizer.
         """

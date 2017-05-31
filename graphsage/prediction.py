@@ -1,7 +1,7 @@
 from __future__ import division
 from __future__ import print_function
 
-from graphsage.inits import glorot, zeros
+from graphsage.inits import zeros
 from graphsage.layers import Layer
 import tensorflow as tf
 
@@ -13,6 +13,8 @@ class BipartiteEdgePredLayer(Layer):
     def __init__(self, input_dim1, input_dim2, placeholders, dropout=False, act=tf.nn.sigmoid,
             bias=False, bilinear_weights=False, **kwargs):
         """
+        Basic class that applies skip-gram-like loss
+        (i.e., dot product of node+target and node and negative samples)
         Args:
             bilinear_weights: use a bilinear weight for affinity calculation: u^T A v. If set to
                 false, it is assumed that input dimensions are the same and the affinity will be 
@@ -95,5 +97,3 @@ class BipartiteEdgePredLayer(Layer):
 
     def weights_norm(self):
         return tf.nn.l2_norm(self.vars['weights'])
-
-
