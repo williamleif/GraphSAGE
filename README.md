@@ -32,6 +32,10 @@ As input, at minimum the code requires that a --train_prefix option is specified
 * <train_prefix>-feats.npy --- "A numpy-stored array of node features; ordering given by id_map.json"
 * <train_prefix>-walks.txt --- "A text file specifying random walk co-occurrences (one pair per line)" (*only for unsupervised)
 
+To run the model on a new dataset, you need to make data files in the format described above. 
+To run random walks for the unsupervised model and to generate the <prefix>-walks.txt file)
+you can use the `run_walks` function in `graphsage.utils`.
+
 #### Model variants 
 The user must also specify a --model, the variants of which are described in detail in the paper:
 * graphsage_mean -- GraphSAGE with mean-based aggregator
@@ -52,9 +56,3 @@ Note that the full log outputs and stored embeddings can be 5-10Gb in size (on t
 The unsupervised variants of GraphSAGE will output embeddings to the logging directory as described above.
 These embeddings can then be used in downstream machine learning applications.
 The `eval_scripts` directory contains examples of feeding the embeddings into simple logistic classifiers.
-
-#### Running on a new dataset
-
-To run the model on a new dataset, you need to make data files of the format described above. 
-To run random walks for the unsupervised model (and to generate the <prefix>-walks.txt file) 
-you can use the `run_walks` function in `graphsage.utils`.
