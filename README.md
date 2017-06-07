@@ -1,18 +1,18 @@
 ## GraphSAGE: Inductive Representation Learning on Large Graphs
 
-#### Authors: [William Hamilton](http://stanford.edu/~wleif) (wleif@stanford.edu), [Rex Ying](http://joy-of-thinking.weebly.com/) (rexying@stanford.edu)
+#### Authors: [William L. Hamilton](http://stanford.edu/~wleif) (wleif@stanford.edu), [Rex Ying](http://joy-of-thinking.weebly.com/) (rexying@stanford.edu)
 #### [Project Website](http://snap.stanford.edu/graphsage/)
 
 
 ### Overview
 
 This directory contains code necessary to run the GraphSAGE algorithm.
-See our paper for details on the algorithm: TODO arxiv link.
+See our [paper](http://TODO) for details on the algorithm.
 The example_data subdirectory contains a small example of the PPI data,
 which includes 3 training networks + one validation network and one test network.
 The full Reddit and PPI datasets are available on the [project website](http://snap.stanford.edu/graphsage/).
 
-If you make use of this code in your work, please cite the following paper: 
+If you make use of this code or the GraphSAGE algorithm in your work, please cite the following paper: 
 
 ### Requirements
 
@@ -22,15 +22,16 @@ Recent versions of TensorFlow, numpy, scipy, and networkx are required.
 
 The example_unsupervised.sh and example_supervised.sh files contain example usages of the code, which use the unsupervised and supervised variants of GraphSAGE, respectively.
 Note that example_unsupervised.sh sets a very small max iteration number, which can be increased to improve performance.
+We generally found that performance continued to improve even after the loss was very near convergence (i.e., even when the loss was decreasing at a very slow rate). 
 
 #### Input format
 As input, at minimum the code requires that a --train_prefix option is specified which specifies the following data files:
 
-* <train_prefix>-G.json -- "A networkx-specified json file describing the input graph."
-* <train_prefix>-id_map.json -- "A json-stored dictionary mapping the graph node ids to consecutive integers."
-* <train_prefix>-id_map.json -- "A json-stored dictionary mapping the graph node ids to classes."
-* <train_prefix>-feats.npy --- "A numpy-stored array of node features; ordering given by id_map.json"
-* <train_prefix>-walks.txt --- "A text file specifying random walk co-occurrences (one pair per line)" (*only for unsupervised)
+* <train_prefix>-G.json -- A networkx-specified json file describing the input graph. Nodes have 'val' and 'test' attributes specifying if they are a part of the validation and test sets, respectively. 
+* <train_prefix>-id_map.json -- A json-stored dictionary mapping the graph node ids to consecutive integers.
+* <train_prefix>-id_map.json -- A json-stored dictionary mapping the graph node ids to classes.
+* <train_prefix>-feats.npy --- A numpy-stored array of node features; ordering given by id_map.json
+* <train_prefix>-walks.txt --- A text file specifying random walk co-occurrences (one pair per line) (*only for unsupervised version of graphsage)
 
 To run the model on a new dataset, you need to make data files in the format described above. 
 To run random walks for the unsupervised model and to generate the <prefix>-walks.txt file)
