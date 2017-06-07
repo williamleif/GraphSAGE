@@ -24,6 +24,8 @@ The example_unsupervised.sh and example_supervised.sh files contain example usag
 Note that example_unsupervised.sh sets a very small max iteration number, which can be increased to improve performance.
 We generally found that performance continued to improve even after the loss was very near convergence (i.e., even when the loss was decreasing at a very slow rate). 
 
+*Note:* For the PPI data, and any other multi-ouput dataset that allows individual nodes to belong to multiple classes, it is necessary to set the `--sigmoid` flag during supervised training. By default the model assumes that the dataset is in the "one-hot" categorical setting. 
+
 #### Input format
 As input, at minimum the code requires that a --train_prefix option is specified which specifies the following data files:
 
@@ -36,6 +38,8 @@ As input, at minimum the code requires that a --train_prefix option is specified
 To run the model on a new dataset, you need to make data files in the format described above. 
 To run random walks for the unsupervised model and to generate the <prefix>-walks.txt file)
 you can use the `run_walks` function in `graphsage.utils`.
+
+
 
 #### Model variants 
 The user must also specify a --model, the variants of which are described in detail in the paper:
