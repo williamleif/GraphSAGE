@@ -7,12 +7,16 @@
 ### Overview
 
 This directory contains code necessary to run the GraphSAGE algorithm.
+<!---
 See our [paper](http://TODO) for details on the algorithm.
+--->
 The example_data subdirectory contains a small example of the PPI data,
 which includes 3 training networks + one validation network and one test network.
 The full Reddit and PPI datasets are available on the [project website](http://snap.stanford.edu/graphsage/).
 
+<!---
 If you make use of this code or the GraphSAGE algorithm in your work, please cite the following paper: 
+--->
 
 ### Requirements
 
