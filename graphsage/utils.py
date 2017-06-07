@@ -1,6 +1,9 @@
+from __future__ import print_function
+
 import numpy as np
 import random
 import json
+import sys
 
 from networkx.readwrite import json_graph
 
@@ -52,7 +55,6 @@ def load_data(prefix, normalize=True):
     return G, feats, id_map, walks, class_map
 
 def run_random_walks(G, nodes, num_walks=N_WALKS):
-    print("Subgraph for walks is of size", len(G))
     pairs = []
     for count, node in enumerate(nodes):
         if G.degree(node) == 0:
@@ -66,5 +68,17 @@ def run_random_walks(G, nodes, num_walks=N_WALKS):
                     pairs.append((node,curr_node))
                 curr_node = next_node
         if count % 1000 == 0:
-            print(count)
+            print("Done walks for", count, "nodes")
     return pairs
+
+if __name__ == "__main__":
+    """ Run random walks """
+    graph_file = sys.argv[1]
+    out_file = sys.argv[2]
+    G_data = json.load(open(graph_file))
+    G = json_graph.node_link_graph(G_data)
+    nodes = [n for n in G.nodes() if not G.node[n]["val"] and not G.node[n]["test"]]
+    G = G.subgraph(nodes)
+    pairs = run_random_walks(G, nodes)
+    with open(out_file, "w") as fp:
+        fp.write("\n".join([p[0] + "\t" + p[1] for p in pairs]))

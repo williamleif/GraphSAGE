@@ -11,7 +11,7 @@ def run_regression(train_embeds, train_labels, test_embeds, test_labels):
     from sklearn.dummy import DummyClassifier
     from sklearn.metrics import f1_score
     from sklearn.multioutput import MultiOutputClassifier
-    dummy = MultiOutputClassifier(DummyClassifier(strategy='uniform'))
+    dummy = MultiOutputClassifier(DummyClassifier())
     dummy.fit(train_embeds, train_labels)
     log = MultiOutputClassifier(SGDClassifier(loss="log"), n_jobs=10)
     log.fit(train_embeds, train_labels)
@@ -20,9 +20,9 @@ def run_regression(train_embeds, train_labels, test_embeds, test_labels):
 
 if __name__ == '__main__':
     parser = ArgumentParser("Run evaluation on PPI data.")
-    parser.add_argument("dataset_dir", "Path to directory containing the dataset.")
-    parser.add_argument("data_dir", "Path to directory containing the learned node embeddings. Set to 'feat' for raw features.")
-    parser.add_argument("setting", "Either val or test.")
+    parser.add_argument("dataset_dir", help="Path to directory containing the dataset.")
+    parser.add_argument("data_dir", help="Path to directory containing the learned node embeddings. Set to 'feat' for raw features.")
+    parser.add_argument("setting", help="Either val or test.")
     args = parser.parse_args()
     dataset_dir = args.dataset_dir
     data_dir = args.data_dir
@@ -41,8 +41,8 @@ if __name__ == '__main__':
 
     if data_dir == "feat":
         print("Using only features..")
-        feats = np.load(data_dir + "/ppi-feats.npy")
-        ## Logistic gets through off by big counts, so log transform num comments and score
+        feats = np.load(dataset_dir + "/ppi-feats.npy")
+        ## Logistic gets thrown off by big counts, so log transform num comments and score
         feats[:,0] = np.log(feats[:,0]+1.0)
         feats[:,1] = np.log(feats[:,1]-min(np.min(feats[:,1]), -1))
         feat_id_map = json.load(open("/dfs/scratch0/graphnet/ppi/ppi-id_map.json"))

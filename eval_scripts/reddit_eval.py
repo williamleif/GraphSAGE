@@ -12,23 +12,20 @@ def run_regression(train_embeds, train_labels, test_embeds, test_labels):
     from sklearn.metrics import f1_score
     dummy = DummyClassifier()
     dummy.fit(train_embeds, train_labels)
-    log = SGDClassifier(loss="log", n_jobs=55, n_iter=50)
+    log = SGDClassifier(loss="log", n_jobs=55)
     log.fit(train_embeds, train_labels)
     print("Test scores")
     print(f1_score(test_labels, log.predict(test_embeds), average="micro"))
-    print(f1_score(test_labels, log.predict(test_embeds), average="macro"))
     print("Train scores")
     print(f1_score(train_labels, log.predict(train_embeds), average="micro"))
-    print(f1_score(train_labels, log.predict(train_embeds), average="macro"))
     print("Random baseline")
     print(f1_score(test_labels, dummy.predict(test_embeds), average="micro"))
-    print(f1_score(test_labels, dummy.predict(test_embeds), average="macro"))
 
 if __name__ == '__main__':
     parser = ArgumentParser("Run evaluation on Reddit data.")
-    parser.add_argument("dataset_dir", "Path to directory containing the dataset.")
-    parser.add_argument("data_dir", "Path to directory containing the learned node embeddings. Set to 'feat' for raw features.")
-    parser.add_argument("setting", "Either val or test.")
+    parser.add_argument("dataset_dir", help="Path to directory containing the dataset.")
+    parser.add_argument("data_dir", help="Path to directory containing the learned node embeddings. Set to 'feat' for raw features.")
+    parser.add_argument("setting", help="Either val or test.")
     args = parser.parse_args()
     dataset_dir = args.dataset_dir
     data_dir = args.data_dir
@@ -37,8 +34,6 @@ if __name__ == '__main__':
     print("Loading data...")
     G = json_graph.node_link_graph(json.load(open(dataset_dir + "/reddit-G.json")))
     labels = json.load(open(dataset_dir + "/reddit-class_map.json"))
-    data_dir = sys.argv[1]
-    setting = sys.argv[2]
     
     train_ids = [n for n in G.nodes() if not G.node[n]['val'] and not G.node[n]['test']]
     test_ids = [n for n in G.nodes() if G.node[n][setting]]
@@ -48,7 +43,7 @@ if __name__ == '__main__':
     if data_dir == "feat":
         print("Using only features..")
         feats = np.load(dataset_dir + "/reddit-feats.npy")
-        ## Logistic gets through off by big counts, so log transform num comments and score
+        ## Logistic gets thrown off by big counts, so log transform num comments and score
         feats[:,0] = np.log(feats[:,0]+1.0)
         feats[:,1] = np.log(feats[:,1]-min(np.min(feats[:,1]), -1))
         feat_id_map = json.load(open(dataset_dir + "reddit-id_map.json"))
