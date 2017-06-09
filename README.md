@@ -7,11 +7,11 @@
 ### Overview
 
 This directory contains code necessary to run the GraphSAGE algorithm.
-See our [paper](http://TODO) for details on the algorithm.
+See our [paper](https://arxiv.org/pdf/1706.02216.pdf) for details on the algorithm.
 
-The example_data subdirectory contains a small example of the PPI data,
-which includes 3 training networks + one validation network and one test network.
-The full Reddit and PPI datasets are available on the [project website](http://snap.stanford.edu/graphsage/).
+The example_data subdirectory contains a small example of the protein-protein interaction data,
+which includes 3 training graphs + one validation graph and one test graph.
+The full Reddit and PPI datasets (described in the paper) are available on the [project website](http://snap.stanford.edu/graphsage/).
 
 If you make use of this code or the GraphSAGE algorithm in your work, please cite the following paper: 
 
