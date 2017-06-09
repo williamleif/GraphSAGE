@@ -12,8 +12,6 @@ FLAGS = flags.FLAGS
 # Boilerplate parts of this code file were originally forked from
 # https://github.com/tkipf/gcn
 # which itself was very inspired by the keras package
-# (A full license with non-anonymized attributions will be provided in the
-# public repo of this code base)
 
 # global unique layer ID dictionary for layer name assignment
 _LAYER_UIDS = {}
