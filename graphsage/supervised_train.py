@@ -46,6 +46,7 @@ flags.DEFINE_integer('dim_2', 128, 'Size of output dim (final is 2x this, if usi
 flags.DEFINE_boolean('random_context', True, 'Whether to use random context or direct edges')
 flags.DEFINE_integer('batch_size', 512, 'minibatch size.')
 flags.DEFINE_boolean('sigmoid', False, 'whether to use sigmoid loss')
+flags.DEFINE_integer('identity_dim', 0, 'Set to positive value to use identity embedding features of that dimension. Default 0.')
 
 #logging, saving, validation settings etc.
 flags.DEFINE_string('base_log_dir', '.', 'base directory for logging and saving embeddings')
@@ -129,8 +130,9 @@ def train(train_data, test_data=None):
     else:
         num_classes = len(set(class_map.values()))
 
-    # pad with dummy zero vector
-    features = np.vstack([features, np.zeros((features.shape[1],))])
+    if not features is None:
+        # pad with dummy zero vector
+        features = np.vstack([features, np.zeros((features.shape[1],))])
 
     context_pairs = train_data[3] if FLAGS.random_context else None
     placeholders = construct_placeholders(num_classes)
@@ -164,6 +166,7 @@ def train(train_data, test_data=None):
                                      layer_infos, 
                                      model_size=FLAGS.model_size,
                                      sigmoid_loss = FLAGS.sigmoid,
+                                     identity_dim = FLAGS.identity_dim,
                                      logging=True)
     elif FLAGS.model == 'gcn':
         # Create model
@@ -180,6 +183,7 @@ def train(train_data, test_data=None):
                                      model_size=FLAGS.model_size,
                                      concat=False,
                                      sigmoid_loss = FLAGS.sigmoid,
+                                     identity_dim = FLAGS.identity_dim,
                                      logging=True)
 
     elif FLAGS.model == 'graphsage_seq':
@@ -195,6 +199,7 @@ def train(train_data, test_data=None):
                                      aggregator_type="seq",
                                      model_size=FLAGS.model_size,
                                      sigmoid_loss = FLAGS.sigmoid,
+                                     identity_dim = FLAGS.identity_dim,
                                      logging=True)
 
     elif FLAGS.model == 'graphsage_pool':
@@ -210,6 +215,7 @@ def train(train_data, test_data=None):
                                      aggregator_type="pool",
                                      model_size=FLAGS.model_size,
                                      sigmoid_loss = FLAGS.sigmoid,
+                                     identity_dim = FLAGS.identity_dim,
                                      logging=True)
     else:
         raise Exception('Error: model name unrecognized.')

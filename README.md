@@ -1,4 +1,4 @@
-## GraphSage: Inductive Representation Learning on Large Graphs
+## GraphSage: Representation Learning on Large Graphs
 
 #### Authors: [William L. Hamilton](http://stanford.edu/~wleif) (wleif@stanford.edu), [Rex Ying](http://joy-of-thinking.weebly.com/) (rexying@stanford.edu)
 #### [Project Website](http://snap.stanford.edu/graphsage/)
@@ -10,16 +10,23 @@ This directory contains code necessary to run the GraphSage algorithm.
 GraphSage can be viewed as a stochastic generalization of graph convolutions, and it is especially useful for massive, dynamic graphs that contain rich feature information. 
 See our [paper](https://arxiv.org/pdf/1706.02216.pdf) for details on the algorithm.
 
+*Note:* GraphSage now also has better support for training on smaller, static graphs and graphs that don't have node features.
+The original algorithm and paper are focused on the task of inductive generalization (i.e., generating embeddings for nodes that were not present during training),
+but many benchmarks/tasks use simple static graphs that do not necessarily have features.
+To support this use case, GraphSage now includes optional "identity features" that can be used with or without other node attributes.
+Including identity features will increase the runtime, but also potentially increase performance (at the usual risk of overfitting). 
+See the section on "Running the code" below.
+
 The example_data subdirectory contains a small example of the protein-protein interaction data,
 which includes 3 training graphs + one validation graph and one test graph.
 The full Reddit and PPI datasets (described in the paper) are available on the [project website](http://snap.stanford.edu/graphsage/).
 
 If you make use of this code or the GraphSage algorithm in your work, please cite the following paper: 
 
-     @article{hamilton2017inductive,
+     @inproceedings{hamilton2017inductive,
 	     author = {Hamilton, William L. and Ying, Rex and Leskovec, Jure},
 	     title = {Inductive Representation Learning on Large Graphs},
-	     journal = {arXiv preprint, arXiv:1603.04467},
+	     booktitle = {NIPS},
 	     year = {2017}
 	   }
 
@@ -29,7 +36,13 @@ Recent versions of TensorFlow, numpy, scipy, and networkx are required.
 
 ### Running the code
 
-The example_unsupervised.sh and example_supervised.sh files contain example usages of the code, which use the unsupervised and supervised variants of GraphSAGE, respectively.
+The example_unsupervised.sh and example_supervised.sh files contain example usages of the code, which use the unsupervised and supervised variants of GraphSage, respectively.
+
+If your benchmark/task does not require generalizing to unseen data, we recommend you try setting the "--identity_dim" flag to a value in the range [64,256]. 
+This flag will make the model use embed unique node ids as attributes, which will increase the runtime but also potentially increase the performance. 
+Note that you should set this flag and *not* try to pass dense one-hot vectors as features (due to sparsity).
+The "dimension" of identity features specifies how many parameters there are per node in the sparse identity-feature lookup table.
+
 Note that example_unsupervised.sh sets a very small max iteration number, which can be increased to improve performance.
 We generally found that performance continued to improve even after the loss was very near convergence (i.e., even when the loss was decreasing at a very slow rate). 
 
@@ -41,21 +54,19 @@ As input, at minimum the code requires that a --train_prefix option is specified
 * <train_prefix>-G.json -- A networkx-specified json file describing the input graph. Nodes have 'val' and 'test' attributes specifying if they are a part of the validation and test sets, respectively. 
 * <train_prefix>-id_map.json -- A json-stored dictionary mapping the graph node ids to consecutive integers.
 * <train_prefix>-id_map.json -- A json-stored dictionary mapping the graph node ids to classes.
-* <train_prefix>-feats.npy --- A numpy-stored array of node features; ordering given by id_map.json
-* <train_prefix>-walks.txt --- A text file specifying random walk co-occurrences (one pair per line) (*only for unsupervised version of graphsage)
+* <train_prefix>-feats.npy [optional] --- A numpy-stored array of node features; ordering given by id_map.json. Can be omitted and only identity features will be used.
+* <train_prefix>-walks.txt [optional] --- A text file specifying random walk co-occurrences (one pair per line) (*only for unsupervised version of graphsage)
 
 To run the model on a new dataset, you need to make data files in the format described above. 
 To run random walks for the unsupervised model and to generate the <prefix>-walks.txt file)
 you can use the `run_walks` function in `graphsage.utils`.
 
-
-
 #### Model variants 
 The user must also specify a --model, the variants of which are described in detail in the paper:
-* graphsage_mean -- GraphSAGE with mean-based aggregator
-* graphsage_seq -- GraphSAGE with LSTM-based aggregator
-* graphsage_pool -- GraphSAGE with max-pooling aggregator
-* gcn -- GraphSAGE with GCN-based aggregator
+* graphsage_mean -- GraphSage with mean-based aggregator
+* graphsage_seq -- GraphSage with LSTM-based aggregator
+* graphsage_pool -- GraphSage with max-pooling aggregator
+* gcn -- GraphSage with GCN-based aggregator
 * n2v -- an implementation of [DeepWalk](https://arxiv.org/abs/1403.6652) (called n2v for short in the code.)
 
 #### Logging directory

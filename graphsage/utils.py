@@ -4,13 +4,14 @@ import numpy as np
 import random
 import json
 import sys
+import os
 
 from networkx.readwrite import json_graph
 
 WALK_LEN=5
 N_WALKS=50
 
-def load_data(prefix, normalize=True):
+def load_data(prefix, normalize=True, load_walks=False):
     G_data = json.load(open(prefix + "-G.json"))
     G = json_graph.node_link_graph(G_data)
     if isinstance(G.nodes()[0], int):
@@ -18,7 +19,11 @@ def load_data(prefix, normalize=True):
     else:
         conversion = lambda n : n
 
-    feats = np.load(prefix + "-feats.npy")
+    if os.path.exists(prefix + "-feats.npy"):
+        feats = np.load(prefix + "-feats.npy")
+    else:
+        print("No features present.. Only identity features will be used.")
+        feats = None
     id_map = json.load(open(prefix + "-id_map.json"))
     id_map = {conversion(k):int(v) for k,v in id_map.iteritems()}
     walks = []
@@ -40,17 +45,18 @@ def load_data(prefix, normalize=True):
         else:
             G[edge[0]][edge[1]]['train_removed'] = False
 
-    if normalize:
+    if normalize and not feats is None:
         from sklearn.preprocessing import StandardScaler
         train_ids = np.array([id_map[n] for n in G.nodes() if not G.node[n]['val'] and not G.node[n]['test']])
         train_feats = feats[train_ids]
         scaler = StandardScaler()
         scaler.fit(train_feats)
         feats = scaler.transform(feats)
-
-    with open(prefix + "-walks.txt") as fp:
-        for line in fp:
-            walks.append(map(conversion, line.split()))
+    
+    if load_walks:
+        with open(prefix + "-walks.txt") as fp:
+            for line in fp:
+                walks.append(map(conversion, line.split()))
 
     return G, feats, id_map, walks, class_map
 
