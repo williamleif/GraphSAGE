@@ -231,7 +231,7 @@ class SampleAndAggregate(GeneralizedModel):
         else:
            self.embeds = None
         if features is None: 
-            if identity_dim is None:
+            if identity_dim == 0:
                 raise Exception("Must have a positive value for identity feature dimension if no input features given.")
             self.features = self.embeds
         else:
