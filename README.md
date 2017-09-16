@@ -1,4 +1,4 @@
-## GraphSAGE: Inductive Representation Learning on Large Graphs
+## GraphSage: Inductive Representation Learning on Large Graphs
 
 #### Authors: [William L. Hamilton](http://stanford.edu/~wleif) (wleif@stanford.edu), [Rex Ying](http://joy-of-thinking.weebly.com/) (rexying@stanford.edu)
 #### [Project Website](http://snap.stanford.edu/graphsage/)
@@ -6,14 +6,15 @@
 
 ### Overview
 
-This directory contains code necessary to run the GraphSAGE algorithm.
+This directory contains code necessary to run the GraphSage algorithm.
+GraphSage can be viewed as a stochastic generalization of graph convolutions, and it is especially useful for massive, dynamic graphs that contain rich feature information. 
 See our [paper](https://arxiv.org/pdf/1706.02216.pdf) for details on the algorithm.
 
 The example_data subdirectory contains a small example of the protein-protein interaction data,
 which includes 3 training graphs + one validation graph and one test graph.
 The full Reddit and PPI datasets (described in the paper) are available on the [project website](http://snap.stanford.edu/graphsage/).
 
-If you make use of this code or the GraphSAGE algorithm in your work, please cite the following paper: 
+If you make use of this code or the GraphSage algorithm in your work, please cite the following paper: 
 
      @article{hamilton2017inductive,
 	     author = {Hamilton, William L. and Ying, Rex and Leskovec, Jure},
@@ -67,7 +68,7 @@ Note that the full log outputs and stored embeddings can be 5-10Gb in size (on t
 
 #### Using the output of the unsupervised models
 
-The unsupervised variants of GraphSAGE will output embeddings to the logging directory as described above.
+The unsupervised variants of GraphSage will output embeddings to the logging directory as described above.
 These embeddings can then be used in downstream machine learning applications.
 The `eval_scripts` directory contains examples of feeding the embeddings into simple logistic classifiers.
 
