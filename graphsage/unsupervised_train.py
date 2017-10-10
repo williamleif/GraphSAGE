@@ -194,7 +194,7 @@ def train(train_data, test_data=None):
                                      model_size=FLAGS.model_size,
                                      logging=True)
 
-    elif FLAGS.model == 'graphsage_pool':
+    elif FLAGS.model == 'graphsage_maxpool':
         sampler = UniformNeighborSampler(adj_info)
         layer_infos = [SAGEInfo("node", sampler, FLAGS.samples_1, FLAGS.dim_1),
                             SAGEInfo("node", sampler, FLAGS.samples_2, FLAGS.dim_2)]
@@ -204,10 +204,25 @@ def train(train_data, test_data=None):
                                     adj_info,
                                     minibatch.deg,
                                      layer_infos=layer_infos, 
-                                     aggregator_type="pool",
+                                     aggregator_type="maxpool",
                                      model_size=FLAGS.model_size,
                                      identity_dim = FLAGS.identity_dim,
                                      logging=True)
+    elif FLAGS.model == 'graphsage_meanpool':
+        sampler = UniformNeighborSampler(adj_info)
+        layer_infos = [SAGEInfo("node", sampler, FLAGS.samples_1, FLAGS.dim_1),
+                            SAGEInfo("node", sampler, FLAGS.samples_2, FLAGS.dim_2)]
+
+        model = SampleAndAggregate(placeholders, 
+                                    features,
+                                    adj_info,
+                                    minibatch.deg,
+                                     layer_infos=layer_infos, 
+                                     aggregator_type="meanpool",
+                                     model_size=FLAGS.model_size,
+                                     identity_dim = FLAGS.identity_dim,
+                                     logging=True)
+
     elif FLAGS.model == 'n2v':
         model = Node2VecModel(placeholders, features.shape[0],
                                        minibatch.deg,

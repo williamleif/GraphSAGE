@@ -2,7 +2,7 @@ import tensorflow as tf
 
 import graphsage.models as models
 import graphsage.layers as layers
-from graphsage.aggregators import MeanAggregator, PoolingAggregator, SeqAggregator, GCNAggregator, TwoLayerPoolingAggregator
+from graphsage.aggregators import MeanAggregator, MaxPoolingAggregator, MeanPoolingAggregator, SeqAggregator, GCNAggregator
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -35,10 +35,10 @@ class SupervisedGraphsage(models.SampleAndAggregate):
             self.aggregator_cls = MeanAggregator
         elif aggregator_type == "seq":
             self.aggregator_cls = SeqAggregator
-        elif aggregator_type == "pool":
-            self.aggregator_cls = PoolingAggregator
-        elif aggregator_type == "pool_2":
-            self.aggregator_cls = TwoLayerPoolingAggregator
+        elif aggregator_type == "meanpool":
+            self.aggregator_cls = MeanPoolingAggregator
+        elif aggregator_type == "maxpool":
+            self.aggregator_cls = MaxPoolingAggregator
         elif aggregator_type == "gcn":
             self.aggregator_cls = GCNAggregator
         else:

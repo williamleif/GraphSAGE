@@ -39,8 +39,8 @@ flags.DEFINE_float('dropout', 0.0, 'dropout rate (1 - keep probability).')
 flags.DEFINE_float('weight_decay', 0.0, 'weight for l2 loss on embedding matrix.')
 flags.DEFINE_integer('max_degree', 128, 'maximum node degree.')
 flags.DEFINE_integer('samples_1', 25, 'number of samples in layer 1')
-flags.DEFINE_integer('samples_2', 10, 'number of users samples in layer 2')
-flags.DEFINE_integer('samples_3', 0, 'number of users samples in layer 3. (Only or mean model)')
+flags.DEFINE_integer('samples_2', 10, 'number of samples in layer 2')
+flags.DEFINE_integer('samples_3', 0, 'number of users samples in layer 3. (Only for mean model)')
 flags.DEFINE_integer('dim_1', 128, 'Size of output dim (final is 2x this, if using concat)')
 flags.DEFINE_integer('dim_2', 128, 'Size of output dim (final is 2x this, if using concat)')
 flags.DEFINE_boolean('random_context', True, 'Whether to use random context or direct edges')
@@ -202,7 +202,7 @@ def train(train_data, test_data=None):
                                      identity_dim = FLAGS.identity_dim,
                                      logging=True)
 
-    elif FLAGS.model == 'graphsage_pool':
+    elif FLAGS.model == 'graphsage_maxpool':
         sampler = UniformNeighborSampler(adj_info)
         layer_infos = [SAGEInfo("node", sampler, FLAGS.samples_1, FLAGS.dim_1),
                             SAGEInfo("node", sampler, FLAGS.samples_2, FLAGS.dim_2)]
@@ -217,6 +217,23 @@ def train(train_data, test_data=None):
                                      sigmoid_loss = FLAGS.sigmoid,
                                      identity_dim = FLAGS.identity_dim,
                                      logging=True)
+
+    elif FLAGS.model == 'graphsage_meanpool':
+        sampler = UniformNeighborSampler(adj_info)
+        layer_infos = [SAGEInfo("node", sampler, FLAGS.samples_1, FLAGS.dim_1),
+                            SAGEInfo("node", sampler, FLAGS.samples_2, FLAGS.dim_2)]
+
+        model = SupervisedGraphsage(num_classes, placeholders, 
+                                    features,
+                                    adj_info,
+                                    minibatch.deg,
+                                     layer_infos=layer_infos, 
+                                     aggregator_type="meanpool",
+                                     model_size=FLAGS.model_size,
+                                     sigmoid_loss = FLAGS.sigmoid,
+                                     identity_dim = FLAGS.identity_dim,
+                                     logging=True)
+
     else:
         raise Exception('Error: model name unrecognized.')
 
