@@ -125,8 +125,8 @@ def train(train_data, test_data=None):
     features = train_data[1]
     id_map = train_data[2]
     class_map  = train_data[4]
-    if isinstance(class_map.values()[0], list):
-        num_classes = len(class_map.values()[0])
+    if isinstance(list(class_map.values())[0], list):
+        num_classes = len(list(class_map.values())[0])
     else:
         num_classes = len(set(class_map.values()))
 
