@@ -59,13 +59,18 @@ class EdgeMinibatchIterator(object):
 
     def _remove_isolated(self, edge_list):
         new_edge_list = []
+        missing = 0
         for n1, n2 in edge_list:
+            if not n1 in self.G.node or not n2 in self.G.node:
+                missing += 1
+                continue
             if (self.deg[self.id2idx[n1]] == 0 or self.deg[self.id2idx[n2]] == 0) \
                     and (not self.G.node[n1]['test'] or self.G.node[n1]['val']) \
                     and (not self.G.node[n2]['test'] or self.G.node[n2]['val']):
                 continue
             else:
                 new_edge_list.append((n1,n2))
+        print("Unexpected missing:", missing)
         return new_edge_list
 
     def construct_adj(self):
