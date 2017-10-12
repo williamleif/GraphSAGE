@@ -65,7 +65,8 @@ you can use the `run_walks` function in `graphsage.utils`.
 The user must also specify a --model, the variants of which are described in detail in the paper:
 * graphsage_mean -- GraphSage with mean-based aggregator
 * graphsage_seq -- GraphSage with LSTM-based aggregator
-* graphsage_pool -- GraphSage with max-pooling aggregator
+* graphsage_maxpool -- GraphSage with max-pooling aggregator (as described in the NIPS 2017 paper)
+* graphsage_meanpool -- GraphSage with mean-pooling aggregator (a variant of the pooling aggregator, where the element-wie mean replaces the element-wise max).
 * gcn -- GraphSage with GCN-based aggregator
 * n2v -- an implementation of [DeepWalk](https://arxiv.org/abs/1403.6652) (called n2v for short in the code.)
 
