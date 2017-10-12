@@ -39,7 +39,7 @@ Recent versions of TensorFlow, numpy, scipy, and networkx are required.
 The example_unsupervised.sh and example_supervised.sh files contain example usages of the code, which use the unsupervised and supervised variants of GraphSage, respectively.
 
 If your benchmark/task does not require generalizing to unseen data, we recommend you try setting the "--identity_dim" flag to a value in the range [64,256]. 
-This flag will make the model use embed unique node ids as attributes, which will increase the runtime but also potentially increase the performance. 
+This flag will make the model embed unique node ids as attributes, which will increase the runtime and number of parameters but also potentially increase the performance. 
 Note that you should set this flag and *not* try to pass dense one-hot vectors as features (due to sparsity).
 The "dimension" of identity features specifies how many parameters there are per node in the sparse identity-feature lookup table.
 
