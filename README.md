@@ -32,7 +32,25 @@ If you make use of this code or the GraphSage algorithm in your work, please cit
 
 ### Requirements
 
-Recent versions of TensorFlow, numpy, scipy, and networkx are required.
+Recent versions of TensorFlow, numpy, scipy, and networkx are required (but networkx must be <=1.11). To guarantee that you have the right package versions, you can use [docker](https://docs.docker.com/) to easily set up a virtual environment. See the Docker subsection below for more info. 
+
+#### Docker
+
+If you do not have [docker](https://docs.docker.com/) installed, you will need to do so. (Just click on the preceding link, the installation is pretty painless).  
+
+You can run GraphSage inside a [docker](https://docs.docker.com/) image. After cloning the project, build and run the image as following:
+
+	$ docker build -t graphsage .
+	$ docker run -it graphsage bash
+
+or start a Jupyter Notebook instead of bash:
+
+	$ docker run -it -p 8888:8888 graphsage
+
+You can also run the GPU image using [nvidia-docker](https://github.com/NVIDIA/nvidia-docker):
+
+	$ docker build -t graphsage:gpu -f Dockerfile.gpu .
+	$ nvidia-docker run -it graphsage:gpu bash	
 
 ### Running the code
 
@@ -48,21 +66,6 @@ We generally found that performance continued to improve even after the loss was
 
 *Note:* For the PPI data, and any other multi-ouput dataset that allows individual nodes to belong to multiple classes, it is necessary to set the `--sigmoid` flag during supervised training. By default the model assumes that the dataset is in the "one-hot" categorical setting.
 
-#### Docker
-
-You can run GraphSage inside a [docker](https://docs.docker.com/) image. After cloning the project, build and run the image as following:
-
-	$ docker build -t graphsage .
-	$ docker run -it graphsage bash
-
-or start a Jupyter Notebook instead of bash:
-
-	$ docker run -it -p 8888:8888 graphsage
-
-You can also run the GPU image using [nvidia-docker](https://github.com/NVIDIA/nvidia-docker):
-
-	$ docker build -t graphsage:gpu -f Dockerfile.gpu .
-	$ nvidia-docker run -it graphsage:gpu bash	
 
 #### Input format
 As input, at minimum the code requires that a --train_prefix option is specified which specifies the following data files:
