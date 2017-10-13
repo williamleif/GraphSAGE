@@ -81,4 +81,4 @@ if __name__ == "__main__":
     G = G.subgraph(nodes)
     pairs = run_random_walks(G, nodes)
     with open(out_file, "w") as fp:
-        fp.write("\n".join([p[0] + "\t" + p[1] for p in pairs]))
+        fp.write("\n".join([str(p[0]) + "\t" + str(p[1]) for p in pairs]))

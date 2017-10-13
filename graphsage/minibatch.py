@@ -125,6 +125,9 @@ class EdgeMinibatchIterator(object):
         batch_edges = self.train_edges[start : start + self.batch_size]
         return self.batch_feed_dict(batch_edges)
 
+    def num_training_batches(self):
+        return len(self.train_edges) // self.batch_size + 1
+
     def val_feed_dict(self, size=None):
         edge_list = self.val_edges
         if size is None:
@@ -286,6 +289,9 @@ class NodeMinibatchIterator(object):
         # add a dummy neighbor
         ret_val = self.batch_feed_dict(val_node_subset)
         return ret_val[0], ret_val[1], (iter_num+1)*size >= len(val_nodes), val_node_subset
+
+    def num_training_batches(self):
+        return len(self.train_nodes) // self.batch_size + 1
 
     def next_minibatch_feed_dict(self):
         start = self.batch_num * self.batch_size
