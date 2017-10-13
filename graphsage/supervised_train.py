@@ -39,13 +39,14 @@ flags.DEFINE_float('dropout', 0.0, 'dropout rate (1 - keep probability).')
 flags.DEFINE_float('weight_decay', 0.0, 'weight for l2 loss on embedding matrix.')
 flags.DEFINE_integer('max_degree', 128, 'maximum node degree.')
 flags.DEFINE_integer('samples_1', 25, 'number of samples in layer 1')
-flags.DEFINE_integer('samples_2', 10, 'number of users samples in layer 2')
-flags.DEFINE_integer('samples_3', 0, 'number of users samples in layer 3. (Only or mean model)')
+flags.DEFINE_integer('samples_2', 10, 'number of samples in layer 2')
+flags.DEFINE_integer('samples_3', 0, 'number of users samples in layer 3. (Only for mean model)')
 flags.DEFINE_integer('dim_1', 128, 'Size of output dim (final is 2x this, if using concat)')
 flags.DEFINE_integer('dim_2', 128, 'Size of output dim (final is 2x this, if using concat)')
 flags.DEFINE_boolean('random_context', True, 'Whether to use random context or direct edges')
 flags.DEFINE_integer('batch_size', 512, 'minibatch size.')
 flags.DEFINE_boolean('sigmoid', False, 'whether to use sigmoid loss')
+flags.DEFINE_integer('identity_dim', 0, 'Set to positive value to use identity embedding features of that dimension. Default 0.')
 
 #logging, saving, validation settings etc.
 flags.DEFINE_string('base_log_dir', '.', 'base directory for logging and saving embeddings')
@@ -124,13 +125,14 @@ def train(train_data, test_data=None):
     features = train_data[1]
     id_map = train_data[2]
     class_map  = train_data[4]
-    if isinstance(class_map.values()[0], list):
-        num_classes = len(class_map.values()[0])
+    if isinstance(list(class_map.values())[0], list):
+        num_classes = len(list(class_map.values())[0])
     else:
         num_classes = len(set(class_map.values()))
 
-    # pad with dummy zero vector
-    features = np.vstack([features, np.zeros((features.shape[1],))])
+    if not features is None:
+        # pad with dummy zero vector
+        features = np.vstack([features, np.zeros((features.shape[1],))])
 
     context_pairs = train_data[3] if FLAGS.random_context else None
     placeholders = construct_placeholders(num_classes)
@@ -164,6 +166,7 @@ def train(train_data, test_data=None):
                                      layer_infos, 
                                      model_size=FLAGS.model_size,
                                      sigmoid_loss = FLAGS.sigmoid,
+                                     identity_dim = FLAGS.identity_dim,
                                      logging=True)
     elif FLAGS.model == 'gcn':
         # Create model
@@ -180,6 +183,7 @@ def train(train_data, test_data=None):
                                      model_size=FLAGS.model_size,
                                      concat=False,
                                      sigmoid_loss = FLAGS.sigmoid,
+                                     identity_dim = FLAGS.identity_dim,
                                      logging=True)
 
     elif FLAGS.model == 'graphsage_seq':
@@ -195,9 +199,10 @@ def train(train_data, test_data=None):
                                      aggregator_type="seq",
                                      model_size=FLAGS.model_size,
                                      sigmoid_loss = FLAGS.sigmoid,
+                                     identity_dim = FLAGS.identity_dim,
                                      logging=True)
 
-    elif FLAGS.model == 'graphsage_pool':
+    elif FLAGS.model == 'graphsage_maxpool':
         sampler = UniformNeighborSampler(adj_info)
         layer_infos = [SAGEInfo("node", sampler, FLAGS.samples_1, FLAGS.dim_1),
                             SAGEInfo("node", sampler, FLAGS.samples_2, FLAGS.dim_2)]
@@ -210,7 +215,25 @@ def train(train_data, test_data=None):
                                      aggregator_type="pool",
                                      model_size=FLAGS.model_size,
                                      sigmoid_loss = FLAGS.sigmoid,
+                                     identity_dim = FLAGS.identity_dim,
                                      logging=True)
+
+    elif FLAGS.model == 'graphsage_meanpool':
+        sampler = UniformNeighborSampler(adj_info)
+        layer_infos = [SAGEInfo("node", sampler, FLAGS.samples_1, FLAGS.dim_1),
+                            SAGEInfo("node", sampler, FLAGS.samples_2, FLAGS.dim_2)]
+
+        model = SupervisedGraphsage(num_classes, placeholders, 
+                                    features,
+                                    adj_info,
+                                    minibatch.deg,
+                                     layer_infos=layer_infos, 
+                                     aggregator_type="meanpool",
+                                     model_size=FLAGS.model_size,
+                                     sigmoid_loss = FLAGS.sigmoid,
+                                     identity_dim = FLAGS.identity_dim,
+                                     logging=True)
+
     else:
         raise Exception('Error: model name unrecognized.')
 

@@ -42,15 +42,15 @@ class EdgeMinibatchIterator(object):
         self.train_edges = self.edges = np.random.permutation(edges)
         if not n2v_retrain:
             self.train_edges = self._remove_isolated(self.train_edges)
-            self.val_edges = [e for e in G.edges_iter() if G[e[0]][e[1]]['train_removed']]
+            self.val_edges = [e for e in G.edges() if G[e[0]][e[1]]['train_removed']]
         else:
             if fixed_n2v:
                 self.train_edges = self.val_edges = self._n2v_prune(self.edges)
             else:
                 self.train_edges = self.val_edges = self.edges
 
-        print(len([n for n in G.nodes_iter() if not G.node[n]['test'] and not G.node[n]['val']]), 'train nodes')
-        print(len([n for n in G.nodes_iter() if G.node[n]['test'] or G.node[n]['val']]), 'test nodes')
+        print(len([n for n in G.nodes() if not G.node[n]['test'] and not G.node[n]['val']]), 'train nodes')
+        print(len([n for n in G.nodes() if G.node[n]['test'] or G.node[n]['val']]), 'test nodes')
         self.val_set_size = len(self.val_edges)
 
     def _n2v_prune(self, edges):
@@ -59,13 +59,18 @@ class EdgeMinibatchIterator(object):
 
     def _remove_isolated(self, edge_list):
         new_edge_list = []
+        missing = 0
         for n1, n2 in edge_list:
+            if not n1 in self.G.node or not n2 in self.G.node:
+                missing += 1
+                continue
             if (self.deg[self.id2idx[n1]] == 0 or self.deg[self.id2idx[n2]] == 0) \
                     and (not self.G.node[n1]['test'] or self.G.node[n1]['val']) \
                     and (not self.G.node[n2]['test'] or self.G.node[n2]['val']):
                 continue
             else:
                 new_edge_list.append((n1,n2))
+        print("Unexpected missing:", missing)
         return new_edge_list
 
     def construct_adj(self):
@@ -153,7 +158,7 @@ class EdgeMinibatchIterator(object):
     def label_val(self):
         train_edges = []
         val_edges = []
-        for n1, n2 in self.G.edges_iter():
+        for n1, n2 in self.G.edges():
             if (self.G.node[n1]['val'] or self.G.node[n1]['test'] 
                     or self.G.node[n2]['val'] or self.G.node[n2]['test']):
                 val_edges.append((n1,n2))
@@ -200,8 +205,8 @@ class NodeMinibatchIterator(object):
         self.adj, self.deg = self.construct_adj()
         self.test_adj = self.construct_test_adj()
 
-        self.val_nodes = [n for n in self.G.nodes_iter() if self.G.node[n]['val']]
-        self.test_nodes = [n for n in self.G.nodes_iter() if self.G.node[n]['test']]
+        self.val_nodes = [n for n in self.G.nodes() if self.G.node[n]['val']]
+        self.test_nodes = [n for n in self.G.nodes() if self.G.node[n]['test']]
 
         self.no_train_nodes_set = set(self.val_nodes + self.test_nodes)
         self.train_nodes = set(G.nodes()).difference(self.no_train_nodes_set)

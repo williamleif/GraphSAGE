@@ -24,11 +24,11 @@ def run_regression(train_embeds, train_labels, test_embeds, test_labels):
 if __name__ == '__main__':
     parser = ArgumentParser("Run evaluation on Reddit data.")
     parser.add_argument("dataset_dir", help="Path to directory containing the dataset.")
-    parser.add_argument("data_dir", help="Path to directory containing the learned node embeddings. Set to 'feat' for raw features.")
+    parser.add_argument("embed_dir", help="Path to directory containing the learned node embeddings. Set to 'feat' for raw features.")
     parser.add_argument("setting", help="Either val or test.")
     args = parser.parse_args()
     dataset_dir = args.dataset_dir
-    data_dir = args.data_dir
+    data_dir = args.embed_dir
     setting = args.setting
 
     print("Loading data...")

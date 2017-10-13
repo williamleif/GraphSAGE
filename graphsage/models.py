@@ -7,7 +7,7 @@ import graphsage.layers as layers
 import graphsage.metrics as metrics
 
 from .prediction import BipartiteEdgePredLayer
-from .aggregators import MeanAggregator, PoolingAggregator, SeqAggregator, GCNAggregator, TwoLayerPoolingAggregator
+from .aggregators import MeanAggregator, MaxPoolingAggregator, MeanPoolingAggregator, SeqAggregator, GCNAggregator
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -191,12 +191,13 @@ class SampleAndAggregate(GeneralizedModel):
 
     def __init__(self, placeholders, features, adj, degrees,
             layer_infos, concat=True, aggregator_type="mean", 
-            model_size="small",
+            model_size="small", identity_dim=0,
             **kwargs):
         '''
         Args:
             - placeholders: Stanford TensorFlow placeholder object.
-            - features: Numpy array with node features.
+            - features: Numpy array with node features. 
+                        NOTE: Pass a None object to train in featureless mode (identity features for nodes)!
             - adj: Numpy array with adjacency lists (padded with random re-samples)
             - degrees: Numpy array with node degrees. 
             - layer_infos: List of SAGEInfo namedtuples that describe the parameters of all 
@@ -204,16 +205,17 @@ class SampleAndAggregate(GeneralizedModel):
             - concat: whether to concatenate during recursive iterations
             - aggregator_type: how to aggregate neighbor information
             - model_size: one of "small" and "big"
+            - identity_dim: Set to positive int to use identity features (slow and cannot generalize, but better accuracy)
         '''
         super(SampleAndAggregate, self).__init__(**kwargs)
         if aggregator_type == "mean":
             self.aggregator_cls = MeanAggregator
         elif aggregator_type == "seq":
             self.aggregator_cls = SeqAggregator
-        elif aggregator_type == "pool":
-            self.aggregator_cls = PoolingAggregator
-        elif aggregator_type == "pool_2":
-            self.aggregator_cls = TwoLayerPoolingAggregator
+        elif aggregator_type == "maxpool":
+            self.aggregator_cls = MaxPoolingAggregator
+        elif aggregator_type == "meanpool":
+            self.aggregator_cls = MeanPoolingAggregator
         elif aggregator_type == "gcn":
             self.aggregator_cls = GCNAggregator
         else:
@@ -224,11 +226,22 @@ class SampleAndAggregate(GeneralizedModel):
         self.inputs2 = placeholders["batch2"]
         self.model_size = model_size
         self.adj_info = adj
-        self.features = tf.Variable(tf.constant(features, dtype=tf.float32), trainable=False)
+        if identity_dim > 0:
+           self.embeds = tf.get_variable("node_embeddings", [adj.get_shape().as_list()[0], identity_dim])
+        else:
+           self.embeds = None
+        if features is None: 
+            if identity_dim == 0:
+                raise Exception("Must have a positive value for identity feature dimension if no input features given.")
+            self.features = self.embeds
+        else:
+            self.features = tf.Variable(tf.constant(features, dtype=tf.float32), trainable=False)
+            if not self.embeds is None:
+                self.features = tf.concat([self.embeds, self.features], axis=1)
         self.degrees = degrees
         self.concat = concat
 
-        self.dims = [features.shape[1]]
+        self.dims = [(0 if features is None else features.shape[1]) + identity_dim]
         self.dims.extend([layer_infos[i].output_dim for i in range(len(layer_infos))])
         self.batch_size = placeholders["batch_size"]
         self.placeholders = placeholders

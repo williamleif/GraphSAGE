@@ -43,6 +43,7 @@ flags.DEFINE_boolean('random_context', True, 'Whether to use random context or d
 flags.DEFINE_integer('neg_sample_size', 20, 'number of negative samples')
 flags.DEFINE_integer('batch_size', 512, 'minibatch size.')
 flags.DEFINE_integer('n2v_test_epochs', 1, 'Number of new SGD epochs for n2v.')
+flags.DEFINE_integer('identity_dim', 0, 'Set to positive value to use identity embedding features of that dimension. Default 0.')
 
 #logging, saving, validation settings etc.
 flags.DEFINE_boolean('save_embeddings', True, 'whether to save embeddings for all nodes after training')
@@ -115,7 +116,7 @@ def save_val_embeddings(sess, model, minibatch_iter, size, out_dir, mod=""):
     with open(out_dir + name + mod + ".txt", "w") as fp:
         fp.write("\n".join(map(str,nodes)))
 
-def construct_placeholders(feature_size):
+def construct_placeholders():
     # Define placeholders
     placeholders = {
         'batch1' : tf.placeholder(tf.int32, shape=(None), name='batch1'),
@@ -133,12 +134,12 @@ def train(train_data, test_data=None):
     features = train_data[1]
     id_map = train_data[2]
 
-    # pad with dummy zero vector
-    features = np.vstack([features, np.zeros((features.shape[1],))])
-    feature_size = features.shape[1]
+    if not features is None:
+        # pad with dummy zero vector
+        features = np.vstack([features, np.zeros((features.shape[1],))])
 
     context_pairs = train_data[3] if FLAGS.random_context else None
-    placeholders = construct_placeholders(feature_size)
+    placeholders = construct_placeholders()
     minibatch = EdgeMinibatchIterator(G, 
             id_map,
             placeholders, batch_size=FLAGS.batch_size,
@@ -159,6 +160,7 @@ def train(train_data, test_data=None):
                                      minibatch.deg,
                                      layer_infos=layer_infos, 
                                      model_size=FLAGS.model_size,
+                                     identity_dim = FLAGS.identity_dim,
                                      logging=True)
     elif FLAGS.model == 'gcn':
         # Create model
@@ -173,6 +175,7 @@ def train(train_data, test_data=None):
                                      layer_infos=layer_infos, 
                                      aggregator_type="gcn",
                                      model_size=FLAGS.model_size,
+                                     identity_dim = FLAGS.identity_dim,
                                      concat=False,
                                      logging=True)
 
@@ -186,11 +189,12 @@ def train(train_data, test_data=None):
                                      adj_info,
                                      minibatch.deg,
                                      layer_infos=layer_infos, 
+                                     identity_dim = FLAGS.identity_dim,
                                      aggregator_type="seq",
                                      model_size=FLAGS.model_size,
                                      logging=True)
 
-    elif FLAGS.model == 'graphsage_pool':
+    elif FLAGS.model == 'graphsage_maxpool':
         sampler = UniformNeighborSampler(adj_info)
         layer_infos = [SAGEInfo("node", sampler, FLAGS.samples_1, FLAGS.dim_1),
                             SAGEInfo("node", sampler, FLAGS.samples_2, FLAGS.dim_2)]
@@ -200,9 +204,25 @@ def train(train_data, test_data=None):
                                     adj_info,
                                     minibatch.deg,
                                      layer_infos=layer_infos, 
-                                     aggregator_type="pool",
+                                     aggregator_type="maxpool",
                                      model_size=FLAGS.model_size,
+                                     identity_dim = FLAGS.identity_dim,
                                      logging=True)
+    elif FLAGS.model == 'graphsage_meanpool':
+        sampler = UniformNeighborSampler(adj_info)
+        layer_infos = [SAGEInfo("node", sampler, FLAGS.samples_1, FLAGS.dim_1),
+                            SAGEInfo("node", sampler, FLAGS.samples_2, FLAGS.dim_2)]
+
+        model = SampleAndAggregate(placeholders, 
+                                    features,
+                                    adj_info,
+                                    minibatch.deg,
+                                     layer_infos=layer_infos, 
+                                     aggregator_type="meanpool",
+                                     model_size=FLAGS.model_size,
+                                     identity_dim = FLAGS.identity_dim,
+                                     logging=True)
+
     elif FLAGS.model == 'n2v':
         model = Node2VecModel(placeholders, features.shape[0],
                                        minibatch.deg,
@@ -354,7 +374,7 @@ def train(train_data, test_data=None):
 
 def main(argv=None):
     print("Loading training data..")
-    train_data = load_data(FLAGS.train_prefix)
+    train_data = load_data(FLAGS.train_prefix, load_walks=True)
     print("Done loading training data..")
     train(train_data)
 

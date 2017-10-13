@@ -2,7 +2,7 @@ import tensorflow as tf
 
 import graphsage.models as models
 import graphsage.layers as layers
-from graphsage.aggregators import MeanAggregator, PoolingAggregator, SeqAggregator, GCNAggregator, TwoLayerPoolingAggregator
+from graphsage.aggregators import MeanAggregator, MaxPoolingAggregator, MeanPoolingAggregator, SeqAggregator, GCNAggregator
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -13,7 +13,7 @@ class SupervisedGraphsage(models.SampleAndAggregate):
     def __init__(self, num_classes,
             placeholders, features, adj, degrees,
             layer_infos, concat=True, aggregator_type="mean", 
-            model_size="small", sigmoid_loss=False,
+            model_size="small", sigmoid_loss=False, identity_dim=0,
                 **kwargs):
         '''
         Args:
@@ -35,10 +35,10 @@ class SupervisedGraphsage(models.SampleAndAggregate):
             self.aggregator_cls = MeanAggregator
         elif aggregator_type == "seq":
             self.aggregator_cls = SeqAggregator
-        elif aggregator_type == "pool":
-            self.aggregator_cls = PoolingAggregator
-        elif aggregator_type == "pool_2":
-            self.aggregator_cls = TwoLayerPoolingAggregator
+        elif aggregator_type == "meanpool":
+            self.aggregator_cls = MeanPoolingAggregator
+        elif aggregator_type == "maxpool":
+            self.aggregator_cls = MaxPoolingAggregator
         elif aggregator_type == "gcn":
             self.aggregator_cls = GCNAggregator
         else:
@@ -48,13 +48,23 @@ class SupervisedGraphsage(models.SampleAndAggregate):
         self.inputs1 = placeholders["batch"]
         self.model_size = model_size
         self.adj_info = adj
-        self.features = tf.Variable(tf.constant(features, dtype=tf.float32), trainable=False)
+        if identity_dim > 0:
+           self.embeds = tf.get_variable("node_embeddings", [adj.get_shape().as_list()[0], identity_dim])
+        else:
+           self.embeds = None
+        if features is None: 
+            if identity_dim == 0:
+                raise Exception("Must have a positive value for identity feature dimension if no input features given.")
+            self.features = self.embeds
+        else:
+            self.features = tf.Variable(tf.constant(features, dtype=tf.float32), trainable=False)
+            if not self.embeds is None:
+                self.features = tf.concat([self.embeds, self.features], axis=1)
         self.degrees = degrees
         self.concat = concat
         self.num_classes = num_classes
         self.sigmoid_loss = sigmoid_loss
-
-        self.dims = [features.shape[1]]
+        self.dims = [(0 if features is None else features.shape[1]) + identity_dim]
         self.dims.extend([layer_infos[i].output_dim for i in range(len(layer_infos))])
         self.batch_size = placeholders["batch_size"]
         self.placeholders = placeholders
