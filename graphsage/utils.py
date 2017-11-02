@@ -6,7 +6,10 @@ import json
 import sys
 import os
 
+import networkx as nx
 from networkx.readwrite import json_graph
+major, minor = map(int, nx.__version__.split('.'))
+assert (major <= 1) and (minor <= 11), "networkx major version > 1.11"
 
 WALK_LEN=5
 N_WALKS=50
