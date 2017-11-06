@@ -212,7 +212,7 @@ def train(train_data, test_data=None):
                                     adj_info,
                                     minibatch.deg,
                                      layer_infos=layer_infos, 
-                                     aggregator_type="pool",
+                                     aggregator_type="maxpool",
                                      model_size=FLAGS.model_size,
                                      sigmoid_loss = FLAGS.sigmoid,
                                      identity_dim = FLAGS.identity_dim,
