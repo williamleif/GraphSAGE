@@ -72,7 +72,7 @@ As input, at minimum the code requires that a --train_prefix option is specified
 
 * <train_prefix>-G.json -- A networkx-specified json file describing the input graph. Nodes have 'val' and 'test' attributes specifying if they are a part of the validation and test sets, respectively.
 * <train_prefix>-id_map.json -- A json-stored dictionary mapping the graph node ids to consecutive integers.
-* <train_prefix>-id_map.json -- A json-stored dictionary mapping the graph node ids to classes.
+* <train_prefix>-class_map.json -- A json-stored dictionary mapping the graph node ids to classes.
 * <train_prefix>-feats.npy [optional] --- A numpy-stored array of node features; ordering given by id_map.json. Can be omitted and only identity features will be used.
 * <train_prefix>-walks.txt [optional] --- A text file specifying random walk co-occurrences (one pair per line) (*only for unsupervised version of graphsage)
 
