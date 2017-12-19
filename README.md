@@ -17,6 +17,8 @@ To support this use case, GraphSage now includes optional "identity features" th
 Including identity features will increase the runtime, but also potentially increase performance (at the usual risk of overfitting).
 See the section on "Running the code" below.
 
+*Note:* GraphSage is intended for use on large graphs (>100,000) nodes. The overhead of subsampling will start to outweigh its benefits on smaller graphs. 
+
 The example_data subdirectory contains a small example of the protein-protein interaction data,
 which includes 3 training graphs + one validation graph and one test graph.
 The full Reddit and PPI datasets (described in the paper) are available on the [project website](http://snap.stanford.edu/graphsage/).
