@@ -35,7 +35,11 @@ If you make use of this code or the GraphSage algorithm in your work, please cit
 
 ### Requirements
 
-Recent versions of TensorFlow, numpy, scipy, and networkx are required (but networkx must be <=1.11). To guarantee that you have the right package versions, you can use [docker](https://docs.docker.com/) to easily set up a virtual environment. See the Docker subsection below for more info. 
+Recent versions of TensorFlow, numpy, scipy, sklearn, and networkx are required (but networkx must be <=1.11). You can install all the required packages using the following command:
+
+	$ pip install -r requirements.txt
+
+To guarantee that you have the right package versions, you can use [docker](https://docs.docker.com/) to easily set up a virtual environment. See the Docker subsection below for more info.
 
 #### Docker
 
