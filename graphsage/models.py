@@ -219,7 +219,7 @@ class SampleAndAggregate(GeneralizedModel):
         elif aggregator_type == "gcn":
             self.aggregator_cls = GCNAggregator
         else:
-            raise Exception("Unknown aggregator: ", self.aggregator_cls)
+            raise Exception("Unknown aggregator: ", aggregator_type)
 
         # get info from placeholders...
         self.inputs1 = placeholders["batch1"]
