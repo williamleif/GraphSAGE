@@ -17,7 +17,7 @@ class SupervisedGraphsage(models.SampleAndAggregate):
                 **kwargs):
         '''
         Args:
-            - placeholders: Stanford TensorFlow placeholder object.
+            - placeholders: Standard TensorFlow placeholder object.
             - features: Numpy array with node features.
             - adj: Numpy array with adjacency lists (padded with random re-samples)
             - degrees: Numpy array with node degrees. 
