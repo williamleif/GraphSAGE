@@ -195,7 +195,7 @@ class SampleAndAggregate(GeneralizedModel):
             **kwargs):
         '''
         Args:
-            - placeholders: Stanford TensorFlow placeholder object.
+            - placeholders: Standard TensorFlow placeholder object.
             - features: Numpy array with node features. 
                         NOTE: Pass a None object to train in featureless mode (identity features for nodes)!
             - adj: Numpy array with adjacency lists (padded with random re-samples)
