@@ -149,7 +149,7 @@ def train(train_data, test_data=None):
         features = np.vstack([features, np.zeros((features.shape[1],))])
 
 
-    # 根据开关判断是否加入随机游走的路线
+    # 根据开关判断是否加入随机游走的信息
     context_pairs = train_data[3] if FLAGS.random_context else None
 
     # 定义一些占位符
@@ -162,7 +162,9 @@ def train(train_data, test_data=None):
             max_degree=FLAGS.max_degree, 
             num_neg_samples=FLAGS.neg_sample_size,   # num_neg_samples 这个形参在这里没有用到
             context_pairs = context_pairs) 
-    adj_info_ph = tf.placeholder(tf.int32, shape=minibatch.adj.shape)   # 邻接表
+
+    # 根据邻接表的维度创建一个占位符
+    adj_info_ph = tf.placeholder(tf.int32, shape=minibatch.adj.shape)   
     adj_info = tf.Variable(adj_info_ph, trainable=False, name="adj_info")
 
     if FLAGS.model == 'graphsage_mean':
@@ -249,6 +251,8 @@ def train(train_data, test_data=None):
     else:
         raise Exception('Error: model name unrecognized.')
 
+
+
     config = tf.ConfigProto(log_device_placement=FLAGS.log_device_placement)
     config.gpu_options.allow_growth = True
     #config.gpu_options.per_process_gpu_memory_fraction = GPU_MEM_FRACTION
@@ -262,7 +266,7 @@ def train(train_data, test_data=None):
     # Init variables
     sess.run(tf.global_variables_initializer(), feed_dict={adj_info_ph: minibatch.adj})
     
-    # Train model
+    # Train model 训练
     
     train_shadow_mrr = None
     shadow_mrr = None
@@ -271,8 +275,10 @@ def train(train_data, test_data=None):
     avg_time = 0.0
     epoch_val_costs = []
 
+    # 从minibatch获取训练和验证数据的邻接表信息
     train_adj_info = tf.assign(adj_info, minibatch.adj)
     val_adj_info = tf.assign(adj_info, minibatch.test_adj)
+
     for epoch in range(FLAGS.epochs): 
         minibatch.shuffle() 
 
@@ -281,11 +287,14 @@ def train(train_data, test_data=None):
         epoch_val_costs.append(0)
         while not minibatch.end():
             # Construct feed dictionary
-            feed_dict = minibatch.next_minibatch_feed_dict()  # 按batch读取数据
+            # 按batch读取数据，每个batch包含边的两个端点，分别放进batch1和batch2中，
+            feed_dict = minibatch.next_minibatch_feed_dict()  
             feed_dict.update({placeholders['dropout']: FLAGS.dropout})
 
             t = time.time()
-            # Training step
+
+            # Training step 训练
+            # model.opt_op是调参 
             outs = sess.run([merged, model.opt_op, model.loss, model.ranks, model.aff_all, 
                     model.mrr, model.outputs1], feed_dict=feed_dict)     # 训练
             train_cost = outs[2]
@@ -296,9 +305,10 @@ def train(train_data, test_data=None):
                 train_shadow_mrr -= (1-0.99) * (train_shadow_mrr - train_mrr)
 
             if iter % FLAGS.validate_iter == 0:
-                # Validation
+                # Validation 验证的时候，需要用验证集的邻接表信息，因此这里跑一下tf.assign的操作
                 sess.run(val_adj_info.op)
                 val_cost, ranks, val_mrr, duration  = evaluate(sess, model, minibatch, size=FLAGS.validate_batch_size)
+                # 验证完毕再切回训练集的邻接表信息
                 sess.run(train_adj_info.op)
                 epoch_val_costs[-1] += val_cost
             if shadow_mrr is None:
