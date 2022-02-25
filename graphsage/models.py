@@ -56,7 +56,7 @@ class Model(object):
         # Build sequential layer model
         self.activations.append(self.inputs)    # 第一步，将输入数据加进激活层，作为第一层
         for layer in self.layers:
-            # 逐层计算中间层，并将每一层的输出都放进activations中保存
+            # 逐层计算，并将每一层的输出都放进activations中保存
             hidden = layer(self.activations[-1])
             self.activations.append(hidden)
         self.outputs = self.activations[-1]   # 模型的输出即为最后一层
@@ -175,6 +175,8 @@ class GeneralizedModel(Model):
             self._build()
 
         # Store model variables for easy access
+        # 和Model类相比，GeneralizedModel在build的时候，并没去生成序列层
+        # self.output必须在它的子类build()函数中实现。
         variables = tf.get_collection(
             tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name)
         self.vars = {var.name: var for var in variables}
@@ -219,14 +221,13 @@ class SampleAndAggregate(GeneralizedModel):
             - model_size: one of "small" and "big"
             - identity_dim: Set to positive int to use identity features (slow and cannot generalize, but better accuracy)
 
-             - features：节点特征 [num_nodes,50]
-             - adj： 图的邻接表， [num_nodes,maxdegree]
-             - degrees：列表，表示每个节点的度数[num_nodes]
-             - layer_infos：描述所有参数的 SAGEInfo 命名元组列表
-                    递归层。 参见上面的 SAGEInfo 定义。
+             - features：节点特征 [num_nodes,num_features]
+             - adj： 图的邻接表， [num_nodes, maxdegree] maxdegree是个超参，表示对于每个节点，最多只记录其maxdegree个邻居信息
+             - degrees：列表，表示每个节点的度数长度为[num_nodes]
+             - layer_infos：一个列表，记录了每一层的信息包括，名称、邻居采样器、
              - concat：是否在递归迭代期间拼接，是或者否
              - aggregator_type：聚合方式的定义
-             - model_size：模型大小,有small 和big，  
+             - model_size：模型大小,有small 和big， 隐藏层的维度有区别
              - identity_dim：int，若＞0则加入额外特征（速度慢且泛化性差，但准确度更高）
         '''
 
@@ -246,9 +247,11 @@ class SampleAndAggregate(GeneralizedModel):
             raise Exception("Unknown aggregator: ", self.aggregator_cls)
 
         # get info from placeholders...
-        # 两个输入 ，batch1和batch2 是一条边的两个顶点id，即每条边的两个顶点，分别放进batch1和batch2中，用作正样本
+        # batch1和batch2 是一条边的两个顶点id，即每条边的两个顶点，分别放进batch1和batch2中
+        # 他们后续会分别作为模型的输入，得到中间表达结果output1和output2，然后在会用表达结果计算性能指标
         self.inputs1 = placeholders["batch1"]
         self.inputs2 = placeholders["batch2"]
+
         self.model_size = model_size
         self.adj_info = adj
 
@@ -265,14 +268,15 @@ class SampleAndAggregate(GeneralizedModel):
             self.features = self.embeds
         else:
             self.features = tf.Variable(tf.constant(
-                features, dtype=tf.float32), trainable=False)  # 节点特征，
+                features, dtype=tf.float32), trainable=False)  # 节点特征通过tf.Variable方式获取，不可训练
             if not self.embeds is None:
                 # (feature的最终特征维度为 原始特征维度50+identity_dim)
                 self.features = tf.concat([self.embeds, self.features], axis=1)
-        self.degrees = degrees
-        self.concat = concat  # 布尔值，是否拼接
 
-        # dim是一个列表，代表每一层的输出维度，第一层是输入层，维度=输入特征的维度，后面的维度是从layer_info得到的
+        self.degrees = degrees
+        self.concat = concat  # 布尔值，表示在模型计算完batch1和batch2的特征表达之后，是否拼接
+
+        # dim是一个列表，代表aggregator每一层的输出维度，第一层是输入层，维度=输入特征的维度，后面的维度是从layer_info得到的
         # 本实验中，dims = [50，128，128]
 
         self.dims = [
@@ -283,7 +287,8 @@ class SampleAndAggregate(GeneralizedModel):
         self.placeholders = placeholders
         self.layer_infos = layer_infos
 
-        # 优化器选择
+        # 优化器选择为adam方法，是当前最常用的梯度更新策略
+
         self.optimizer = tf.train.AdamOptimizer(
             learning_rate=FLAGS.learning_rate)
 
@@ -293,10 +298,20 @@ class SampleAndAggregate(GeneralizedModel):
     def sample(self, inputs, layer_infos, batch_size=None):
         """ Sample neighbors to be the supportive fields for multi-layer convolutions.
 
-        对节点邻居采样，作为该点的是支持域
-        samples[0] 维度是 [batch_size]
-        samples[1] [layer_infos[1].num_samples * batch_size]
-        samples[2] [layer_infos[1].num_samples * layer_infos[0].num_samples * batch_size]
+        函数功能：对输入的每一个节点，根据采样跳数目，递归地采样邻居，作为该节点的支持域
+
+        samples是一个列表，列表的每一个元素又是一个列表，长度不一，存放的是该跳数下的所有的邻居节点id
+        示例：
+        samples[0] 维度是 [batch_size,] ，即是自身
+        samples[1] [layer_infos[1].num_samples * batch_size,]
+        samples[2] [layer_infos[1].num_samples * layer_infos[0].num_samples * batch_size,]
+        以此类推
+
+        # support_sizes 存的是的各层的采样数目，是一个列表，每个元素是一个正整数
+        # support_sizes[0] = 1， 意义是初始状态，邻居就是节点本身
+        # support_sizes[1] = layer_infos[-1].num_samples * 1， 本实验中为10
+        # support_sizes[2] = layer_infos[-1].num_samples * layer_infos[-2].num_samples * 1， 本实验中为10*15=250
+        # 以此类推，从最外层的邻居数依次往内乘
 
         Args:
             inputs: batch inputs
@@ -307,25 +322,25 @@ class SampleAndAggregate(GeneralizedModel):
             batch_size = self.batch_size
         samples = [inputs]  # samples[0] 是输入，
         # size of convolution support at each layer per node
-        # support_sizes 存的是的各层的采样数目，是一个列表
-        # support_sizes[0] = 1， 初始状态就是节点本身
-        # support_sizes[1] = layer_infos[-1].num_samples * 1， 本实验中为10
-        # support_sizes[2] = layer_infos[-1].num_samples * layer_infos[-2].num_samples * 1， 本实验中为250
-        # 以此类推，从最外层的邻居数依次往内乘
 
         support_size = 1
         support_sizes = [support_size]
 
         for k in range(len(layer_infos)):  # k为跳数，也是层数， 实验中k = 0 1
             t = len(layer_infos) - k - 1  # t = 1 0
-            # 每一跳的邻居数目是前一跳的邻居节点数*该层的采样数
-            support_size *= layer_infos[t].num_samples
-            sampler = layer_infos[t].neigh_sampler  # 采样器选择，实验中采样器是同一种
 
-            # 采样器的两个输入，第一个是将被采样的节点id，第二个是采样数
+            # 每一跳的邻居数目是前一跳的邻居节点数*该层的采样数，有个累乘的逻辑
+            support_size *= layer_infos[t].num_samples
+
+            sampler = layer_infos[t].neigh_sampler  # 采样器选择
+
+            # 采样器的两个输入，第一个入参是将要被采样的节点id，第二个入参是对这些节点，要采样多少个邻居
             node = sampler((samples[k], layer_infos[t].num_samples))
-            # reshape并放进数组
+
+            # reshape成一维数组，再添加进samples中
             samples.append(tf.reshape(node, [support_size * batch_size, ]))
+
+            # 同时记录好每一层的采样数
             support_sizes.append(support_size)
         return samples, support_sizes
 
@@ -351,11 +366,9 @@ class SampleAndAggregate(GeneralizedModel):
                 sample[2]是对sample[1]中每一个节点进行邻居采样，即第2跳采样
                 以此类推
         input_features: 矩阵，存放的是全量的节点的特征 
-        dims: 列表，代表每一层的中间表达的维度
 
         num_samples: 列表，表示模型每一层的邻居采样数目，实验中为[25,10]
-        support_sizes: the number of nodes to gather information from for each layer.
-        batch_size: the number of inputs (different for batch inputs and negative samples).
+
         Returns:
 
 
@@ -367,31 +380,36 @@ class SampleAndAggregate(GeneralizedModel):
             batch_size = self.batch_size
 
         # length: number of layers + 1
-        # 根据节点id，从全量的特征矩阵里获取节点特征
+        # 遍历samples列表，根据每一个元素中存放的节点id，从全量的特征矩阵里获取所需的节点特征
+     
+        hidden = [tf.nn.embedding_lookup(
+            input_features, node_samples) for node_samples in samples]
         # hidden[0] [batch, num_features]
         # hidden[1] [layer_infos[1].num_samples * batch_size, num_features]
         # hidden[2] [layer_infos[1].num_samples * layer_infos[0].num_samples * batch_size, num_features]
         # num_features表示的是特征维度，实验中为50
-
-        hidden = [tf.nn.embedding_lookup(
-            input_features, node_samples) for node_samples in samples]
         
-        # 输入batch1的时候，该项为aggregators = None， 输入batch2或者neg_samples的时候，aggregators为batch1的aggregators
+        
+        # 输入batch1的时候，该项为aggregators = None， 输入batch2或者neg_samples的时候，aggregators为batch1生成的aggregators
+        # 即他们用的是同一个聚合器
         new_agg = aggregators is None
 
         if new_agg:
             aggregators = []
         for layer in range(len(num_samples)):   # 按层数循环
             if new_agg:
-                dim_mult = 2 if concat and (layer != 0) else 1  # 维度系数，如果有concat=True，从第二层开始，输入维度需要乘2
+                dim_mult = 2 if concat and (layer != 0) else 1
                 # aggregator at current layer
+                # 根据给定的参数，初始化一个聚合器类，
+                # 其中，聚合器有多种选择，是由超参定义的，
+                # 另外需要的参数是输入维度、输出维度、dropout系数等等
+                # 注意输入维度前面有个dim_mult，该值为1或者2，如果concat=True，表示节点自身的结果和邻居的会拼接一下，则从第二层开始，输入维度需要乘2
                 # 判断是否是最后一层，如果是的话，会有个参数act=lambda x: x
                 if layer == len(num_samples) - 1:
                     aggregator = self.aggregator_cls(dim_mult*dims[layer], dims[layer+1], act=lambda x: x,
                                                      dropout=self.placeholders['dropout'],
                                                      name=name, concat=concat, model_size=model_size)
                 else:
-                    # 初始化一个聚合器类，类别是超参定义的，需要的参数是输入维度、输出维度、dropout系数等等
                     aggregator = self.aggregator_cls(dim_mult*dims[layer], dims[layer+1],
                                                      dropout=self.placeholders['dropout'],
                                                      name=name, concat=concat, model_size=model_size)
@@ -399,45 +417,44 @@ class SampleAndAggregate(GeneralizedModel):
             else:
                 # 在batch2或者neg_samples输入的时候，直接使用已有的聚合器
                 aggregator = aggregators[layer]
-            
+
             # 本实验中，aggregator1 的输入输出维度分别为：50，256， 参数矩阵维度为50，128 ，后面有个拼接
             # aggregator2 的输入输出维度为：256，256，参数矩阵维度为256，128
 
-
-
             # hidden representation at current layer for all support nodes that are various hops away
+            # 该变量存放的是当前层，各节点利用邻居节点的信息更新后的中间表达，
             next_hidden = []
-            
-            
+
             # as layer increases, the number of support nodes needed decreases
             # 随着层数增加，跳数需要减少
-            for hop in range(len(num_samples) - layer): 
+            for hop in range(len(num_samples) - layer):
                 dim_mult = 2 if concat and (layer != 0) else 1
 
                 # 每个节点的特征，是由自身的特征和其邻居节点的特征聚合而来的，
                 # hidden[hop+1]包含了hidden[hop]中节点的所有邻居特征
-                # 因为hidden[i]是二维的，而mean_aggregator是需要将邻居节点特征平均，
+                # 因为hidden[i]存放为二维，而mean_aggregator是需要将邻居节点特征平均，
                 # 因此需要将它reshape一下，方便在后面的处理中取所有邻居的均值
                 # neigh_dims = [batch_size * 当前跳数的支持节点数，当前层的需要采样的邻居节点数，特征数]
-
-                # 
+                #  
                 neigh_dims = [batch_size * support_sizes[hop],
                               num_samples[len(num_samples) - hop - 1],
                               dim_mult*dims[layer]]
                 h = aggregator((hidden[hop],
-                                tf.reshape(hidden[hop + 1], neigh_dims)))   
+                                tf.reshape(hidden[hop + 1], neigh_dims)))
                 next_hidden.append(h)
             hidden = next_hidden
+
+        # 输出的hidden[0]，本实验中，shape=[batch_size,128*2]
         return hidden[0], aggregators
 
     def _build(self):
 
-        # 将第batch2作为标签，即batch1和batch2是一对正样本对
+        # 将第batch2视为标签，即batch1和batch2是一对正样本对
         labels = tf.reshape(
             tf.cast(self.placeholders['batch2'], dtype=tf.int64),
             [self.batch_size, 1])
 
-        # 获取负样本， 按照给定的概率分布进行采样
+        # 获取负样本， 按照给定的概率分布unigrams进行采样
         self.neg_samples, _, _ = (tf.nn.fixed_unigram_candidate_sampler(
             true_classes=labels,
             num_true=1,
@@ -450,24 +467,24 @@ class SampleAndAggregate(GeneralizedModel):
         # perform "convolution"
 
         # 根据节点id去采样其邻居节点id
+        # 返回的结果：samples，support_sizes
         samples1, support_sizes1 = self.sample(self.inputs1, self.layer_infos)
         samples2, support_sizes2 = self.sample(self.inputs2, self.layer_infos)
-        
+
         # 每层需要的采样数 实验中是[25,10]
         num_samples = [
             layer_info.num_samples for layer_info in self.layer_infos]
 
-
         # 获取batch1的特征表达，该步传入的聚合器参数为None，会构建一个聚合器返回
         self.outputs1, self.aggregators = self.aggregate(samples1, [self.features], self.dims, num_samples,
                                                          support_sizes1, concat=self.concat, model_size=self.model_size)
-        
-        # 获取batch2的特征表达，其中聚合器是直接使用上一步生成的
+
+        # 获取batch2的特征表达，其中聚合器是直接使用上一步生成的：aggregators=self.aggregators
         self.outputs2, _ = self.aggregate(samples2, [self.features], self.dims, num_samples,
                                           support_sizes2, aggregators=self.aggregators, concat=self.concat,
                                           model_size=self.model_size)
-        
-        # 对负样本采样
+
+        # 对负样本做邻居节点采样，和上面的正样本是同样的处理
         neg_samples, neg_support_sizes = self.sample(self.neg_samples, self.layer_infos,
                                                      FLAGS.neg_sample_size)
 
@@ -478,15 +495,15 @@ class SampleAndAggregate(GeneralizedModel):
 
         dim_mult = 2 if self.concat else 1
 
+
         # 这里生成了一个预测层，注意参数bilinear_weights,这个值如果为True，则会生成一个可训练的参数矩阵，在后续的计算loss会用到
-        # 在这里设置了否，则无参数矩阵，本质上就是一个计算loss的类
+        # 但是本实验在这里设置了否，则无参数矩阵，本质上就是一个计算loss的类，完全不影响上述aggregator的输出
         self.link_pred_layer = BipartiteEdgePredLayer(dim_mult*self.dims[-1],
                                                       dim_mult*self.dims[-1], self.placeholders, act=tf.nn.sigmoid,
                                                       bilinear_weights=False,
                                                       name='edge_predict')
 
-
-        # 对输出的样本执行L2规范化，dim=1，表示按行做，即按样本点做
+        # 对输出的样本执行L2规范化，dim=0或者1，1是表示按行做
         # x_l2[i] = x[i]/sqrt(sum(x^2))
         self.outputs1 = tf.nn.l2_normalize(self.outputs1, 1)
         self.outputs2 = tf.nn.l2_normalize(self.outputs2, 1)
@@ -508,21 +525,23 @@ class SampleAndAggregate(GeneralizedModel):
         # 计算梯度
         grads_and_vars = self.optimizer.compute_gradients(self.loss)
 
-        # 梯度裁剪，若梯度大于5则置为5，小于-5则置为-5
+        # 梯度裁剪，若梯度大于5则置为5，小于-5则置为-5，
         clipped_grads_and_vars = [(tf.clip_by_value(grad, -5.0, 5.0) if grad is not None else None, var)
                                   for grad, var in grads_and_vars]
+        
+        # clipped_grads_and_vars 是一个元组,(grad,var),表示梯度值和变量值
         self.grad, _ = clipped_grads_and_vars[0]
 
-        # 更新参数
+        # 利用裁剪后的梯度更新模型参数
         self.opt_op = self.optimizer.apply_gradients(clipped_grads_and_vars)
 
     def _loss(self):
-        
+
         # L2正则化项
         for aggregator in self.aggregators:
             for var in aggregator.vars.values():
                 self.loss += FLAGS.weight_decay * tf.nn.l2_loss(var)
-        
+
         # 根据之前生成的预测层，计算loss，该loss有三个选项：_xent_loss、_skipgram_loss、_hinge_loss
         self.loss += self.link_pred_layer.loss(
             self.outputs1, self.outputs2, self.neg_outputs)
@@ -538,14 +557,13 @@ class SampleAndAggregate(GeneralizedModel):
         ③将两组数据拼接，拼接后的数组维度[batch_size, neg_samples_size + 1],意义是每一个顶点和负样本、正样本之间的"亲和度"
         ④计算正样本对之间的亲和度的排名，排名越靠前越好
         mrr值，
-        """        
-        
+        """
+
         # ①计算正样本对的"亲和度"
         # aff值在本实验即是两个输入按元素点乘，再按行求和
         # shape : [batch_size,] 表示了该batch中，每个节点和其邻居节点的“亲和度”，越大代表越相似
-        
-        aff = self.link_pred_layer.affinity(self.outputs1, self.outputs2)
 
+        aff = self.link_pred_layer.affinity(self.outputs1, self.outputs2)
 
         # ②计算顶点和负样本的"亲和度"
         # 返回的是一个矩阵，维度：[batch_size，num_neg_samples]
@@ -555,7 +573,7 @@ class SampleAndAggregate(GeneralizedModel):
 
         self.neg_aff = tf.reshape(
             self.neg_aff, [self.batch_size, FLAGS.neg_sample_size])
-        
+
         # ③将两组数据拼接，拼接后的数组维度[batch_size, neg_samples_size + 1],意义是每一个顶点和负样本、正样本之间的"亲和度"
         # shape : [batch_size,1]
         _aff = tf.expand_dims(aff, axis=1)
@@ -568,9 +586,8 @@ class SampleAndAggregate(GeneralizedModel):
         _, indices_of_ranks = tf.nn.top_k(self.aff_all, k=size)
         _, self.ranks = tf.nn.top_k(-indices_of_ranks, k=size)
 
-
         # 取self.ranks最后一列，即正样本的排名序数，因为是从0算起的，所以要+1
-        # mrr = 1.0/rank 
+        # mrr = 1.0/rank
         self.mrr = tf.reduce_mean(
             tf.div(1.0, tf.cast(self.ranks[:, -1] + 1, tf.float32)))
         tf.summary.scalar('mrr', self.mrr)

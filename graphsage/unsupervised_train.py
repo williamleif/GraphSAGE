@@ -71,11 +71,16 @@ def log_dir():
 # Define model evaluation function
 def evaluate(sess, model, minibatch_iter, size=None):
     t_test = time.time()
+
+    # 评估阶段，这里传入的是验证集
     feed_dict_val = minibatch_iter.val_feed_dict(size)
     outs_val = sess.run([model.loss, model.ranks, model.mrr], 
                         feed_dict=feed_dict_val)
     return outs_val[0], outs_val[1], outs_val[2], (time.time() - t_test)
 
+
+
+# 这个函数在无监督中没有用到，暂时忽略
 def incremental_evaluate(sess, model, minibatch_iter, size):
     t_test = time.time()
     finished = False
@@ -141,7 +146,7 @@ def train(train_data, test_data=None):
     #读取图、节点特征、节点映射表
 
     G = train_data[0]
-    features = train_data[1]  # shape = [num, 50]
+    features = train_data[1]  # shape = [num_nodes, num_features]
     id_map = train_data[2]
 
     if not features is None:
@@ -168,7 +173,8 @@ def train(train_data, test_data=None):
     adj_info = tf.Variable(adj_info_ph, trainable=False, name="adj_info")
 
     if FLAGS.model == 'graphsage_mean':
-        # Create model
+        # Create model 
+        #  
         sampler = UniformNeighborSampler(adj_info)
         layer_infos = [SAGEInfo("node", sampler, FLAGS.samples_1, FLAGS.dim_1),
                             SAGEInfo("node", sampler, FLAGS.samples_2, FLAGS.dim_2)] # samples1 =25， sample2=10
@@ -294,11 +300,18 @@ def train(train_data, test_data=None):
             t = time.time()
 
             # Training step 训练
-            # model.opt_op是调参 
+            # merged是保存了的所有的tf.summary相关的变量，用于tensorboard绘图，
+            # model.opt_op 是优化调参的操作
+            # 其他的变量
+            # 
+            #  
             outs = sess.run([merged, model.opt_op, model.loss, model.ranks, model.aff_all, 
                     model.mrr, model.outputs1], feed_dict=feed_dict)     # 训练
             train_cost = outs[2]
             train_mrr = outs[5]   
+
+
+            # train_shadow_mrr值是一个滑动平均更新的方式
             if train_shadow_mrr is None:
                 train_shadow_mrr = train_mrr#
             else:
