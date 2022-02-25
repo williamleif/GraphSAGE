@@ -386,7 +386,7 @@ class SeqAggregator(Layer):
     """
 
     def __init__(self, input_dim, output_dim, model_size="small", neigh_input_dim=None,
-                 dropout=0., bias=False, act=tf.nn.relu, name=None,  concat=False, **kwargs):
+                 dropout=0., bias=False, act=tf.nn.relu, name=None, concat=False, **kwargs):
         super(SeqAggregator, self).__init__(**kwargs)
 
         self.dropout = dropout
