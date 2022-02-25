@@ -118,6 +118,13 @@ def save_val_embeddings(sess, model, minibatch_iter, size, out_dir, mod=""):
 
 def construct_placeholders():
     # Define placeholders
+    '''
+    batch1和batch2分别代表一条边的两个端点，在后续的处理中用作正样本对
+    neg_samples 是负样本的数量
+    dropout 是特征传入下一层的时候的丢弃概率，有助于模型的泛化性能
+
+    '''
+
     placeholders = {
         'batch1' : tf.placeholder(tf.int32, shape=(None), name='batch1'),
         'batch2' : tf.placeholder(tf.int32, shape=(None), name='batch2'),
@@ -130,30 +137,39 @@ def construct_placeholders():
     return placeholders
 
 def train(train_data, test_data=None):
+
+    #读取图、节点特征、节点映射表
+
     G = train_data[0]
-    features = train_data[1]
+    features = train_data[1]  # shape = [num, 50]
     id_map = train_data[2]
 
     if not features is None:
-        # pad with dummy zero vector
+        # pad with dummy zero vector，features的特征加一列全0
         features = np.vstack([features, np.zeros((features.shape[1],))])
 
+
+    # 根据开关判断是否加入随机游走的路线
     context_pairs = train_data[3] if FLAGS.random_context else None
+
+    # 定义一些占位符
     placeholders = construct_placeholders()
+
+    # 创建一个边batch迭代器类，每个batch是一条边，边上的两个点的id作为模型的输入
     minibatch = EdgeMinibatchIterator(G, 
             id_map,
             placeholders, batch_size=FLAGS.batch_size,
             max_degree=FLAGS.max_degree, 
-            num_neg_samples=FLAGS.neg_sample_size,
-            context_pairs = context_pairs)
-    adj_info_ph = tf.placeholder(tf.int32, shape=minibatch.adj.shape)
+            num_neg_samples=FLAGS.neg_sample_size,   # num_neg_samples 这个形参在这里没有用到
+            context_pairs = context_pairs) 
+    adj_info_ph = tf.placeholder(tf.int32, shape=minibatch.adj.shape)   # 邻接表
     adj_info = tf.Variable(adj_info_ph, trainable=False, name="adj_info")
 
     if FLAGS.model == 'graphsage_mean':
         # Create model
         sampler = UniformNeighborSampler(adj_info)
         layer_infos = [SAGEInfo("node", sampler, FLAGS.samples_1, FLAGS.dim_1),
-                            SAGEInfo("node", sampler, FLAGS.samples_2, FLAGS.dim_2)]
+                            SAGEInfo("node", sampler, FLAGS.samples_2, FLAGS.dim_2)] # samples1 =25， sample2=10
 
         model = SampleAndAggregate(placeholders, 
                                      features,
@@ -265,15 +281,15 @@ def train(train_data, test_data=None):
         epoch_val_costs.append(0)
         while not minibatch.end():
             # Construct feed dictionary
-            feed_dict = minibatch.next_minibatch_feed_dict()
+            feed_dict = minibatch.next_minibatch_feed_dict()  # 按batch读取数据
             feed_dict.update({placeholders['dropout']: FLAGS.dropout})
 
             t = time.time()
             # Training step
             outs = sess.run([merged, model.opt_op, model.loss, model.ranks, model.aff_all, 
-                    model.mrr, model.outputs1], feed_dict=feed_dict)
+                    model.mrr, model.outputs1], feed_dict=feed_dict)     # 训练
             train_cost = outs[2]
-            train_mrr = outs[5]
+            train_mrr = outs[5]   
             if train_shadow_mrr is None:
                 train_shadow_mrr = train_mrr#
             else:

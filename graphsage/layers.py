@@ -16,6 +16,7 @@ FLAGS = flags.FLAGS
 # global unique layer ID dictionary for layer name assignment
 _LAYER_UIDS = {}
 
+
 def get_layer_uid(layer_name=''):
     """Helper function, assigns unique layer IDs."""
     if layer_name not in _LAYER_UIDS:
@@ -24,6 +25,7 @@ def get_layer_uid(layer_name=''):
     else:
         _LAYER_UIDS[layer_name] += 1
         return _LAYER_UIDS[layer_name]
+
 
 class Layer(object):
     """Base layer class. Defines basic API for all layer objects.
@@ -72,8 +74,9 @@ class Layer(object):
 
 class Dense(Layer):
     """Dense layer."""
-    def __init__(self, input_dim, output_dim, dropout=0., 
-                 act=tf.nn.relu, placeholders=None, bias=True, featureless=False, 
+
+    def __init__(self, input_dim, output_dim, dropout=0.,
+                 act=tf.nn.relu, placeholders=None, bias=True, featureless=False,
                  sparse_inputs=False, **kwargs):
         super(Dense, self).__init__(**kwargs)
 
@@ -92,9 +95,9 @@ class Dense(Layer):
 
         with tf.variable_scope(self.name + '_vars'):
             self.vars['weights'] = tf.get_variable('weights', shape=(input_dim, output_dim),
-                                         dtype=tf.float32, 
-                                         initializer=tf.contrib.layers.xavier_initializer(),
-                                         regularizer=tf.contrib.layers.l2_regularizer(FLAGS.weight_decay))
+                                                   dtype=tf.float32,
+                                                   initializer=tf.contrib.layers.xavier_initializer(),
+                                                   regularizer=tf.contrib.layers.l2_regularizer(FLAGS.weight_decay))
             if self.bias:
                 self.vars['bias'] = zeros([output_dim], name='bias')
 
