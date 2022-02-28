@@ -20,6 +20,9 @@ class BipartiteEdgePredLayer(Layer):
             bilinear_weights: use a bilinear weight for affinity calculation: u^T A v. If set to
                 false, it is assumed that input dimensions are the same and the affinity will be 
                 based on dot product.
+
+        一个基础类，使用了"skip-gram" 类型的损失函数(节点和目标的点乘以及节点和负样本的点乘)
+
         """
 
         super(BipartiteEdgePredLayer, self).__init__(**kwargs)
@@ -70,6 +73,12 @@ class BipartiteEdgePredLayer(Layer):
         """ Affinity score between batch of inputs1 and inputs2.
         Args:
             inputs1: tensor of shape [batch_size x feature_size].
+
+        计算正样本对之间的"亲和度"：
+        ①特征矩阵点乘(没有bilinear_weights的情况下)
+        ②求均值
+
+        返回的是样本和其对应的正样本之间的亲和度，尺寸：[batch_size，1]
         """
         # shape: [batch_size, input_dim1]
         if self.bilinear_weights:
@@ -86,6 +95,11 @@ class BipartiteEdgePredLayer(Layer):
         Returns:
             Tensor of shape [batch_size x num_neg_samples]. For each node, a list of affinities to
                 negative samples is computed.
+        计算输入样本和每一个负样本之间的"亲和度"：
+        ①inputs_features × neg_features.T
+        
+        返回的是样本和每一个负样本之间的"亲和度"，尺寸是[batch_size, num_neg_samples]
+
         """
         if self.bilinear_weights:
             inputs1 = tf.matmul(inputs1, self.vars['weights'])
@@ -104,7 +118,18 @@ class BipartiteEdgePredLayer(Layer):
 
     def _xent_loss(self, inputs1, inputs2, neg_samples, hard_neg_samples=None):
         """
-                对应论文的公式(1)
+        计算正样本的交叉熵损失，正样本label赋值全1, 负样本label赋值全0
+        公式 : y * -log(sigmoid(x)) + (1 - y) * -log(1 - sigmoid(x))
+        正样本y=1，负样本y=0，分别可以省略一项
+
+        ①计算正样本对的亲和度
+        ②计算样本和负样本的亲和度
+        ③将label全部设为1，计算正样本对产生的loss
+        ④将label全部设为0，计算所有负样本产生的loss
+        ⑤将两个loss平均一下
+
+        对应论文的公式(1)
+                
         """
         # 计算正样本对的亲和度
         aff = self.affinity(inputs1, inputs2)
@@ -114,14 +139,12 @@ class BipartiteEdgePredLayer(Layer):
 
 
         """
-        计算正样本的交叉熵损失，正样本label赋值全1
-        公式 = y * -log(sigmoid(aff)) + (1 - y) * -log(1 - sigmoid(aff))
-        正样本y=1，负样本y=0，分别可以省略一项
+
         """
         true_xent = tf.nn.sigmoid_cross_entropy_with_logits(
             labels=tf.ones_like(aff), logits=aff)
 
-        # 计算负样本的交叉熵损失，负样本label赋值全0
+        # 计算负样本的交叉熵损失
         negative_xent = tf.nn.sigmoid_cross_entropy_with_logits(
             labels=tf.zeros_like(neg_aff), logits=neg_aff)
 
