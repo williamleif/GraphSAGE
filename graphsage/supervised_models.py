@@ -27,6 +27,9 @@ class SupervisedGraphsage(models.SampleAndAggregate):
             - aggregator_type: how to aggregate neighbor information
             - model_size: one of "small" and "big"
             - sigmoid_loss: Set to true if nodes can belong to multiple classes
+        
+        
+        该初始化部分和Model.SampleAndAggregate类基本相同
         '''
 
         models.GeneralizedModel.__init__(self, **kwargs)
@@ -76,22 +79,41 @@ class SupervisedGraphsage(models.SampleAndAggregate):
 
 
     def build(self):
-        samples1, support_sizes1 = self.sample(self.inputs1, self.layer_infos)
+        
+        """
+        输出特征表达outputs1、计算梯度的流程和SampleAndAggregate的基本相同
+        
+        只是该有监督模型在特征表达的结果后面加了一层全连接(Dense)，用来预测
+        """
+        # 调用的父类SampleAndAggregate的采样方案
+        samples1, support_sizes1 = self.sample(self.inputs1, self.layer_infos)       
         num_samples = [layer_info.num_samples for layer_info in self.layer_infos]
+
+        # 构建聚合器并输出节点表达结果
         self.outputs1, self.aggregators = self.aggregate(samples1, [self.features], self.dims, num_samples,
                 support_sizes1, concat=self.concat, model_size=self.model_size)
-        dim_mult = 2 if self.concat else 1
 
+        dim_mult = 2 if self.concat else 1
+        # L2规范化
         self.outputs1 = tf.nn.l2_normalize(self.outputs1, 1)
-
         dim_mult = 2 if self.concat else 1
+
+        
+        """
+        全连接层
+        该层的输入维度为aggregator输出的特征表达的维度
+        输出维度为分类数
+        """
         self.node_pred = layers.Dense(dim_mult*self.dims[-1], self.num_classes, 
                 dropout=self.placeholders['dropout'],
                 act=lambda x : x)
         # TF graph management
         self.node_preds = self.node_pred(self.outputs1)
 
+        # 定义损失函数
         self._loss()
+
+        # 梯度计算过程和SampleAndAggregate一样
         grads_and_vars = self.optimizer.compute_gradients(self.loss)
         clipped_grads_and_vars = [(tf.clip_by_value(grad, -5.0, 5.0) if grad is not None else None, var) 
                 for grad, var in grads_and_vars]
@@ -101,6 +123,8 @@ class SupervisedGraphsage(models.SampleAndAggregate):
 
     def _loss(self):
         # Weight decay loss
+
+        #L2正则化项 
         for aggregator in self.aggregators:
             for var in aggregator.vars.values():
                 self.loss += FLAGS.weight_decay * tf.nn.l2_loss(var)
@@ -108,6 +132,7 @@ class SupervisedGraphsage(models.SampleAndAggregate):
             self.loss += FLAGS.weight_decay * tf.nn.l2_loss(var)
        
         # classification loss
+        # 交叉熵损失，激活函数可选sigmoid或者softmax，目的是将结果映射到[0,1]之间
         if self.sigmoid_loss:
             self.loss += tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
                     logits=self.node_preds,

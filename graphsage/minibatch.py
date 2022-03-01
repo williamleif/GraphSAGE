@@ -151,14 +151,13 @@ class EdgeMinibatchIterator(object):
 
     def incremental_embed_feed_dict(self, size, iter_num):
         node_list = self.nodes
-        val_nodes = node_list[iter_num*size:min((iter_num+1)*size, 
-            len(node_list))]
+        val_nodes = node_list[iter_num*size:min((iter_num+1)*size,len(node_list))]
         val_edges = [(n,n) for n in val_nodes]
         return self.batch_feed_dict(val_edges), (iter_num+1)*size >= len(node_list), val_edges
 
     def label_val(self):
         train_edges = []
-        val_edges = []
+        val_edges = [] 
         for n1, n2 in self.G.edges():
             if (self.G.node[n1]['val'] or self.G.node[n1]['test'] 
                     or self.G.node[n2]['val'] or self.G.node[n2]['test']):

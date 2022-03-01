@@ -97,6 +97,16 @@ def incremental_evaluate(sess, model, minibatch_iter, size):
     return np.mean(val_losses), np.mean(val_mrrs), (time.time() - t_test)
 
 def save_val_embeddings(sess, model, minibatch_iter, size, out_dir, mod=""):
+    """
+    输入：
+    model：训练好了的模型
+    minibatch_iter：迭代类
+    size： batch_size
+    out_dir： 输出目录
+
+    该函数作用是，训练好模型之后，再将所有的节点都输入到模型计算，保存其特征表达到本地
+    """
+
     val_embeddings = []
     finished = False
     seen = set([])
@@ -104,18 +114,27 @@ def save_val_embeddings(sess, model, minibatch_iter, size, out_dir, mod=""):
     iter_num = 0
     name = "val"
     while not finished:
+        
+        # 获取batch dict数据
+        # finished是一个信号，如果为真代表节点遍历完毕，则退出
         feed_dict_val, finished, edges = minibatch_iter.incremental_embed_feed_dict(size, iter_num)
         iter_num += 1
+
+        # 计算特征表达
         outs_val = sess.run([model.loss, model.mrr, model.outputs1], 
                             feed_dict=feed_dict_val)
-        #ONLY SAVE FOR embeds1 because of planetoid
+        
+        # ONLY SAVE FOR embeds1 because of planetoid
         for i, edge in enumerate(edges):
             if not edge[0] in seen:
+                # outs_val[-1]表示的是 model.outputs1这个变量，
+                # outs_val[-1][i,:]是第i个节点的特征
                 val_embeddings.append(outs_val[-1][i,:])
                 nodes.append(edge[0])
                 seen.add(edge[0])
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
+        
     val_embeddings = np.vstack(val_embeddings)
     np.save(out_dir + name + mod + ".npy",  val_embeddings)
     with open(out_dir + name + mod + ".txt", "w") as fp:
