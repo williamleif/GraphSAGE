@@ -326,19 +326,19 @@ class SampleAndAggregate(GeneralizedModel):
         support_size = 1
         support_sizes = [support_size]
 
-        for k in range(len(layer_infos)):  # k为跳数，也是层数， 实验中k = 0 1
-            t = len(layer_infos) - k - 1  # t = 1 0
+        for k in range(len(layer_infos)):  # k为跳数，实验中k = 0 1
+            t = len(layer_infos) - k - 1 # t = 1 0
 
             # 每一跳的邻居数目是前一跳的邻居节点数*该层的采样数，有个累乘的逻辑
             support_size *= layer_infos[t].num_samples
 
             sampler = layer_infos[t].neigh_sampler  # 采样器选择
 
-            # 采样器的两个输入，第一个入参是将要被采样的节点id，第二个入参是对这些节点，要采样多少个邻居
+            # 采样器的两个输入，第一个入参是将要被采样的节点id，第二个入参是采样多少个邻居
             node = sampler((samples[k], layer_infos[t].num_samples))
 
             # reshape成一维数组，再添加进samples中
-            samples.append(tf.reshape(node, [support_size * batch_size, ]))
+            samples.append(tf.reshape(node, [support_size * batch_size, ])) 
 
             # 同时记录好每一层的采样数
             support_sizes.append(support_size)
@@ -422,7 +422,7 @@ class SampleAndAggregate(GeneralizedModel):
             # aggregator2 的输入输出维度为：256，256，参数矩阵维度为256，128
 
             # hidden representation at current layer for all support nodes that are various hops away
-            # 该变量存放的是当前层，各节点利用邻居节点的信息更新后的中间表达，
+            # 该变量存放的是当前层，各节点利用邻居节点的信息更新后的中间表达
             next_hidden = []
 
             # as layer increases, the number of support nodes needed decreases
@@ -437,7 +437,7 @@ class SampleAndAggregate(GeneralizedModel):
                 # neigh_dims = [batch_size * 当前跳数的支持节点数，当前层的需要采样的邻居节点数，特征数]
                 #  
                 neigh_dims = [batch_size * support_sizes[hop],
-                              num_samples[len(num_samples) - hop - 1],
+                              num_samples[len(num_samples) - hop - 1],  # 这个维度，对应sample函数里的 t = len(layer_infos) - k - 1
                               dim_mult*dims[layer]]
                 h = aggregator((hidden[hop],
                                 tf.reshape(hidden[hop + 1], neigh_dims)))
