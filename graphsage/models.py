@@ -537,7 +537,8 @@ class SampleAndAggregate(GeneralizedModel):
 
     def _loss(self):
 
-        # L2正则化项
+        # 参数的L2正则化项
+        # output = sum(t ** 2) / 2
         for aggregator in self.aggregators:
             for var in aggregator.vars.values():
                 self.loss += FLAGS.weight_decay * tf.nn.l2_loss(var)
@@ -556,13 +557,11 @@ class SampleAndAggregate(GeneralizedModel):
         ②计算顶点和负样本的"亲和度"
         ③将两组数据拼接，拼接后的数组维度[batch_size, neg_samples_size + 1],意义是每一个顶点和负样本、正样本之间的"亲和度"
         ④计算正样本对之间的亲和度的排名，排名越靠前越好
-        mrr值，
         """
 
         # ①计算正样本对的"亲和度"
         # aff值在本实验即是两个输入按元素点乘，再按行求和
         # shape : [batch_size,] 表示了该batch中，每个节点和其邻居节点的“亲和度”，越大代表越相似
-
         aff = self.link_pred_layer.affinity(self.outputs1, self.outputs2)
 
         # ②计算顶点和负样本的"亲和度"

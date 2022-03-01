@@ -81,6 +81,7 @@ class Layer(object):
 class Dense(Layer):
     """Dense layer.
     一个基础的全连接层
+    
     需要的入参：
         dropout ：0-1的数字，表示输入被丢弃的概率
         act：激活函数的类型选取，例如sigmoid、relu等
