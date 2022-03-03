@@ -16,7 +16,13 @@ assert (major <= 1) and (minor <= 11), "networkx major version > 1.11"
 WALK_LEN=5
 N_WALKS=50
 
+
+"""
+加载数据集，并进行简单的预处理
+如下注释以toy-ppi数据为例
+"""
 def load_data(prefix, normalize=True, load_walks=False):
+    # DATA 1, 14755 nodes, 228431 links
     G_data = json.load(open(prefix + "-G.json"))
     G = json_graph.node_link_graph(G_data)
     if isinstance(G.nodes()[0], int):
@@ -24,14 +30,23 @@ def load_data(prefix, normalize=True, load_walks=False):
     else:
         conversion = lambda n : n
 
+    # DATA 2, numpy数组, (14755, 50) dtype(float64)
     if os.path.exists(prefix + "-feats.npy"):
         feats = np.load(prefix + "-feats.npy")
     else:
         print("No features present.. Only identity features will be used.")
         feats = None
+
+    # DATA 3, {"0": 0, "1": 1}, len: 14755
+    # node ids to int value indexing feature tensor，
+    # 用来做string id到int id的映射，其实没啥用
     id_map = json.load(open(prefix + "-id_map.json"))
     id_map = {conversion(k):int(v) for k,v in id_map.items()}
     walks = []
+
+    # DATA4, dict, len: 14755, column: 121
+    # from nodes ids to class value (int or list)
+    # 分类标签
     class_map = json.load(open(prefix + "-class_map.json"))
     if isinstance(list(class_map.values())[0], list):
         lab_conversion = lambda n : n
@@ -42,6 +57,7 @@ def load_data(prefix, normalize=True, load_walks=False):
 
     ## Remove all nodes that do not have val/test annotations
     ## (necessary because of networkx weirdness with the Reddit data)
+    # 移除损坏的节点：无val和test字段的，即验证和测试标识字段
     broken_count = 0
     for node in G.nodes():
         if not 'val' in G.node[node] or not 'test' in G.node[node]:
@@ -51,6 +67,9 @@ def load_data(prefix, normalize=True, load_walks=False):
 
     ## Make sure the graph has edge train_removed annotations
     ## (some datasets might already have this..)
+    # edge: (0, 800) 边，是个元组，表示源节点ID和目标节点ID
+    # G[0]：某节点与所有的关联节点组成的边的集合
+    # 下面这段代码的作用：标记需要在训练中移除的关联关系
     print("Loaded data.. now preprocessing..")
     for edge in G.edges():
         if (G.node[edge[0]]['val'] or G.node[edge[1]]['val'] or
@@ -59,10 +78,14 @@ def load_data(prefix, normalize=True, load_walks=False):
         else:
             G[edge[0]][edge[1]]['train_removed'] = False
 
-    if normalize and not feats is None:
+    if normalize and feats is not None:
         from sklearn.preprocessing import StandardScaler
+        # 训练集的id集合，only int, len: 9716
         train_ids = np.array([id_map[n] for n in G.nodes() if not G.node[n]['val'] and not G.node[n]['test']])
         train_feats = feats[train_ids]
+        # 特征缩放，标准化：z = (x - u) / s
+        # u is the mean of the training samples
+        # s is the standard deviation of the training samples
         scaler = StandardScaler()
         scaler.fit(train_feats)
         feats = scaler.transform(feats)
