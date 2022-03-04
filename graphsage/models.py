@@ -557,7 +557,7 @@ class SampleAndAggregate(GeneralizedModel):
             for var in aggregator.vars.values():
                 self.loss += FLAGS.weight_decay * tf.nn.l2_loss(var)
 
-        # 根据之前生成的预测层，计算loss，该loss有三个选项：_xent_loss、_skipgram_loss、_hinge_loss
+        # 根据之前生成的预测层，计算loss，该loss有三个选项：_xent_loss、_skipgram_loss、_hinge_loss，论文中使用的是第一个
         self.loss += self.link_pred_layer.loss(
             self.outputs1, self.outputs2, self.neg_outputs)
         tf.summary.scalar('loss', self.loss)
