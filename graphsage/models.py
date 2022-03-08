@@ -97,6 +97,8 @@ class Model(object):
         print("Model restored from file: %s" % save_path)
 
 
+
+# 多层感知机，是一个基础的深度模型
 class MLP(Model):
     """ A standard multi-layer perceptron """
 
@@ -449,12 +451,22 @@ class SampleAndAggregate(GeneralizedModel):
 
     def _build(self):
 
-        # 将第batch2视为标签，即batch1和batch2是一对正样本对
+        # 将batch2 reshape一下，用作下一步采样的输入
         labels = tf.reshape(
             tf.cast(self.placeholders['batch2'], dtype=tf.int64),
             [self.batch_size, 1])
+        """
+        tf.nn.fixed_unigram_candidate_sampler函数功能是从[0,range_max)中随机采样num_sampled个类
+        其中，返回的类是一个列表，每一个元素属于[0, range_max), 代表一个类别
+        每个类被采样的概率由参数unigrams决定，可以是表示概率的数组，也可以是表示count的数组(count大表示被采样的概率大)
+        range_max参数代表从[0,range_max)中采样，这里等于节点数，刚好是对应节点id
 
-        # 获取负样本， 按照给定的概率分布unigrams进行采样
+        --------
+        在本实验中，就是利用这个函数，利用每个节点的度数形成概率分布，从节点集合中获取一批节点id，在后续视作负样本
+        true_classes个参数传入的是labels，但经测试，采样的结果和这个参数是无关的样子
+        返回的结果neg_samples里面是一个列表，每一个元素代表的是节点id
+        """
+
         self.neg_samples, _, _ = (tf.nn.fixed_unigram_candidate_sampler(
             true_classes=labels,
             num_true=1,
@@ -471,7 +483,8 @@ class SampleAndAggregate(GeneralizedModel):
         samples1, support_sizes1 = self.sample(self.inputs1, self.layer_infos)
         samples2, support_sizes2 = self.sample(self.inputs2, self.layer_infos)
 
-        # 每层需要的采样数 实验中是[25,10]
+        # 每层需要的采样数 实验中是[25,10] 
+        
         num_samples = [
             layer_info.num_samples for layer_info in self.layer_infos]
 
@@ -505,6 +518,7 @@ class SampleAndAggregate(GeneralizedModel):
 
         # 对输出的样本执行L2规范化，dim=0或者1，1是表示按行做
         # x_l2[i] = x[i]/sqrt(sum(x^2))
+        # 对应论文 Algorithm 1的第7行
         self.outputs1 = tf.nn.l2_normalize(self.outputs1, 1)
         self.outputs2 = tf.nn.l2_normalize(self.outputs2, 1)
         self.neg_outputs = tf.nn.l2_normalize(self.neg_outputs, 1)
@@ -543,7 +557,7 @@ class SampleAndAggregate(GeneralizedModel):
             for var in aggregator.vars.values():
                 self.loss += FLAGS.weight_decay * tf.nn.l2_loss(var)
 
-        # 根据之前生成的预测层，计算loss，该loss有三个选项：_xent_loss、_skipgram_loss、_hinge_loss
+        # 根据之前生成的预测层，计算loss，该loss有三个选项：_xent_loss、_skipgram_loss、_hinge_loss，论文中使用的是第一个
         self.loss += self.link_pred_layer.loss(
             self.outputs1, self.outputs2, self.neg_outputs)
         tf.summary.scalar('loss', self.loss)
@@ -592,6 +606,8 @@ class SampleAndAggregate(GeneralizedModel):
         tf.summary.scalar('mrr', self.mrr)
 
 
+
+#  
 class Node2VecModel(GeneralizedModel):
     def __init__(self, placeholders, dict_size, degrees, name=None,
                  nodevec_dim=50, lr=0.001, **kwargs):

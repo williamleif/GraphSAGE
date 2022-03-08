@@ -173,7 +173,7 @@ def train(train_data, test_data=None):
         features = np.vstack([features, np.zeros((features.shape[1],))])
 
 
-    # 根据开关判断是否加入随机游走的信息
+    # 根据开关判断是否使用随机游走的边，如果为真则使用随机游走的边代替图G里的边信息
     context_pairs = train_data[3] if FLAGS.random_context else None
 
     # 定义一些占位符
