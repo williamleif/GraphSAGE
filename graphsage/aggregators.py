@@ -44,6 +44,7 @@ class MeanAggregator(Layer):
 
     # 输入维度[batchSize, numNeigh, numNeighDim]，依次为batch大小，每一跳节点数量，节点特征数
     def _call(self, inputs):
+
         self_vecs, neigh_vecs = inputs
 
         neigh_vecs = tf.nn.dropout(neigh_vecs, 1 - self.dropout)
@@ -266,11 +267,13 @@ class MeanPoolingAggregator(Layer):
         batch_size = dims[0]
         num_neighbors = dims[1]
         # [nodes * sampled neighbors] x [hidden_dim]
-        h_reshaped = tf.reshape(neigh_h, (batch_size * num_neighbors, self.neigh_input_dim))
+        h_reshaped = tf.reshape(
+            neigh_h, (batch_size * num_neighbors, self.neigh_input_dim))
 
         for l in self.mlp_layers:
             h_reshaped = l(h_reshaped)
-        neigh_h = tf.reshape(h_reshaped, (batch_size, num_neighbors, self.hidden_dim))
+        neigh_h = tf.reshape(
+            h_reshaped, (batch_size, num_neighbors, self.hidden_dim))
         neigh_h = tf.reduce_mean(neigh_h, axis=1)
 
         from_neighs = tf.matmul(neigh_h, self.vars['neigh_weights'])
@@ -354,11 +357,13 @@ class TwoMaxLayerPoolingAggregator(Layer):
         batch_size = dims[0]
         num_neighbors = dims[1]
         # [nodes * sampled neighbors] x [hidden_dim]
-        h_reshaped = tf.reshape(neigh_h, (batch_size * num_neighbors, self.neigh_input_dim))
+        h_reshaped = tf.reshape(
+            neigh_h, (batch_size * num_neighbors, self.neigh_input_dim))
 
         for l in self.mlp_layers:
             h_reshaped = l(h_reshaped)
-        neigh_h = tf.reshape(h_reshaped, (batch_size, num_neighbors, self.hidden_dim_2))
+        neigh_h = tf.reshape(
+            h_reshaped, (batch_size, num_neighbors, self.hidden_dim_2))
         neigh_h = tf.reduce_max(neigh_h, axis=1)
 
         from_neighs = tf.matmul(neigh_h, self.vars['neigh_weights'])
@@ -381,7 +386,7 @@ class SeqAggregator(Layer):
     """
 
     def __init__(self, input_dim, output_dim, model_size="small", neigh_input_dim=None,
-                 dropout=0., bias=False, act=tf.nn.relu, name=None, concat=False, **kwargs):
+                 dropout=0., bias=False, act=tf.nn.relu, name=None,  concat=False, **kwargs):
         super(SeqAggregator, self).__init__(**kwargs)
 
         self.dropout = dropout

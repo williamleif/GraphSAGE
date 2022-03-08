@@ -131,7 +131,7 @@ def train(train_data, test_data=None):
         num_classes = len(set(class_map.values()))
 
     if not features is None:
-        # pad with dummy zero vector
+        # pad with dummy zero vector, row wise
         features = np.vstack([features, np.zeros((features.shape[1],))])
 
     context_pairs = train_data[3] if FLAGS.random_context else None

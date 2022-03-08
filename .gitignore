@@ -1,6 +1,5 @@
 # Custom
 *.idea
-*.png
 *.pdf
 tmp/
 *.txt

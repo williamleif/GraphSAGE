@@ -151,14 +151,13 @@ class EdgeMinibatchIterator(object):
 
     def incremental_embed_feed_dict(self, size, iter_num):
         node_list = self.nodes
-        val_nodes = node_list[iter_num*size:min((iter_num+1)*size, 
-            len(node_list))]
+        val_nodes = node_list[iter_num*size:min((iter_num+1)*size,len(node_list))]
         val_edges = [(n,n) for n in val_nodes]
         return self.batch_feed_dict(val_edges), (iter_num+1)*size >= len(node_list), val_edges
 
     def label_val(self):
         train_edges = []
-        val_edges = []
+        val_edges = [] 
         for n1, n2 in self.G.edges():
             if (self.G.node[n1]['val'] or self.G.node[n1]['test'] 
                     or self.G.node[n2]['val'] or self.G.node[n2]['test']):
@@ -225,15 +224,23 @@ class NodeMinibatchIterator(object):
         return label_vec
 
     def construct_adj(self):
+        # 一个numpy 2dim的数组，用于存储各个节点的邻接点，最多为max_degree个邻接点
+        # adj shape: (14756, 128)
         adj = len(self.id2idx)*np.ones((len(self.id2idx)+1, self.max_degree))
+        # (14755,)   用于存储所有节点的degree值
         deg = np.zeros((len(self.id2idx),))
 
         for nodeid in self.G.nodes():
+            # 测试集合验证集的节点直接跳过
             if self.G.node[nodeid]['test'] or self.G.node[nodeid]['val']:
                 continue
+
+            # 获取所有训练集中节点邻居节点的id
             neighbors = np.array([self.id2idx[neighbor] 
                 for neighbor in self.G.neighbors(nodeid)
                 if (not self.G[nodeid][neighbor]['train_removed'])])
+
+            # 不足degree的邻接点补足degree，超过的随机选择degree个邻接点
             deg[self.id2idx[nodeid]] = len(neighbors)
             if len(neighbors) == 0:
                 continue
@@ -247,6 +254,7 @@ class NodeMinibatchIterator(object):
     def construct_test_adj(self):
         adj = len(self.id2idx)*np.ones((len(self.id2idx)+1, self.max_degree))
         for nodeid in self.G.nodes():
+            # 所有邻接点的id，这里没有限制训练或测试集
             neighbors = np.array([self.id2idx[neighbor] 
                 for neighbor in self.G.neighbors(nodeid)])
             if len(neighbors) == 0:

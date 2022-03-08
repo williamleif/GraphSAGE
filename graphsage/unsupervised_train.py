@@ -71,11 +71,16 @@ def log_dir():
 # Define model evaluation function
 def evaluate(sess, model, minibatch_iter, size=None):
     t_test = time.time()
+
+    # 评估阶段，这里传入的是验证集
     feed_dict_val = minibatch_iter.val_feed_dict(size)
     outs_val = sess.run([model.loss, model.ranks, model.mrr], 
                         feed_dict=feed_dict_val)
     return outs_val[0], outs_val[1], outs_val[2], (time.time() - t_test)
 
+
+
+# 这个函数在无监督中没有用到，暂时忽略
 def incremental_evaluate(sess, model, minibatch_iter, size):
     t_test = time.time()
     finished = False
@@ -92,6 +97,16 @@ def incremental_evaluate(sess, model, minibatch_iter, size):
     return np.mean(val_losses), np.mean(val_mrrs), (time.time() - t_test)
 
 def save_val_embeddings(sess, model, minibatch_iter, size, out_dir, mod=""):
+    """
+    输入：
+    model：训练好了的模型
+    minibatch_iter：迭代类
+    size： batch_size
+    out_dir： 输出目录
+
+    该函数作用是，训练好模型之后，再将所有的节点都输入到模型计算，保存其特征表达到本地
+    """
+
     val_embeddings = []
     finished = False
     seen = set([])
@@ -99,18 +114,27 @@ def save_val_embeddings(sess, model, minibatch_iter, size, out_dir, mod=""):
     iter_num = 0
     name = "val"
     while not finished:
+        
+        # 获取batch dict数据
+        # finished是一个信号，如果为真代表节点遍历完毕，则退出
         feed_dict_val, finished, edges = minibatch_iter.incremental_embed_feed_dict(size, iter_num)
         iter_num += 1
+
+        # 计算特征表达
         outs_val = sess.run([model.loss, model.mrr, model.outputs1], 
                             feed_dict=feed_dict_val)
-        #ONLY SAVE FOR embeds1 because of planetoid
+        
+        # ONLY SAVE FOR embeds1 because of planetoid
         for i, edge in enumerate(edges):
             if not edge[0] in seen:
+                # outs_val[-1]表示的是 model.outputs1这个变量，
+                # outs_val[-1][i,:]是第i个节点的特征
                 val_embeddings.append(outs_val[-1][i,:])
                 nodes.append(edge[0])
                 seen.add(edge[0])
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
+        
     val_embeddings = np.vstack(val_embeddings)
     np.save(out_dir + name + mod + ".npy",  val_embeddings)
     with open(out_dir + name + mod + ".txt", "w") as fp:
@@ -118,6 +142,13 @@ def save_val_embeddings(sess, model, minibatch_iter, size, out_dir, mod=""):
 
 def construct_placeholders():
     # Define placeholders
+    '''
+    batch1和batch2分别代表一条边的两个端点，在后续的处理中用作正样本对
+    neg_samples 是负样本的数量
+    dropout 是特征传入下一层的时候的丢弃概率，有助于模型的泛化性能
+
+    '''
+
     placeholders = {
         'batch1' : tf.placeholder(tf.int32, shape=(None), name='batch1'),
         'batch2' : tf.placeholder(tf.int32, shape=(None), name='batch2'),
@@ -130,30 +161,42 @@ def construct_placeholders():
     return placeholders
 
 def train(train_data, test_data=None):
+
+    #读取图、节点特征、节点映射表
+
     G = train_data[0]
-    features = train_data[1]
+    features = train_data[1]  # shape = [num_nodes, num_features]
     id_map = train_data[2]
 
     if not features is None:
-        # pad with dummy zero vector
+        # pad with dummy zero vector，features的特征加一列全0
         features = np.vstack([features, np.zeros((features.shape[1],))])
 
+
+    # 根据开关判断是否使用随机游走的边，如果为真则使用随机游走的边代替图G里的边信息
     context_pairs = train_data[3] if FLAGS.random_context else None
+
+    # 定义一些占位符
     placeholders = construct_placeholders()
+
+    # 创建一个边batch迭代器类，每个batch是一条边，边上的两个点的id作为模型的输入
     minibatch = EdgeMinibatchIterator(G, 
             id_map,
             placeholders, batch_size=FLAGS.batch_size,
             max_degree=FLAGS.max_degree, 
-            num_neg_samples=FLAGS.neg_sample_size,
-            context_pairs = context_pairs)
-    adj_info_ph = tf.placeholder(tf.int32, shape=minibatch.adj.shape)
+            num_neg_samples=FLAGS.neg_sample_size,   # num_neg_samples 这个形参在这里没有用到
+            context_pairs = context_pairs) 
+
+    # 根据邻接表的维度创建一个占位符
+    adj_info_ph = tf.placeholder(tf.int32, shape=minibatch.adj.shape)   
     adj_info = tf.Variable(adj_info_ph, trainable=False, name="adj_info")
 
     if FLAGS.model == 'graphsage_mean':
-        # Create model
+        # Create model 
+        #  
         sampler = UniformNeighborSampler(adj_info)
         layer_infos = [SAGEInfo("node", sampler, FLAGS.samples_1, FLAGS.dim_1),
-                            SAGEInfo("node", sampler, FLAGS.samples_2, FLAGS.dim_2)]
+                            SAGEInfo("node", sampler, FLAGS.samples_2, FLAGS.dim_2)] # samples1 =25， sample2=10
 
         model = SampleAndAggregate(placeholders, 
                                      features,
@@ -233,6 +276,8 @@ def train(train_data, test_data=None):
     else:
         raise Exception('Error: model name unrecognized.')
 
+
+
     config = tf.ConfigProto(log_device_placement=FLAGS.log_device_placement)
     config.gpu_options.allow_growth = True
     #config.gpu_options.per_process_gpu_memory_fraction = GPU_MEM_FRACTION
@@ -246,7 +291,7 @@ def train(train_data, test_data=None):
     # Init variables
     sess.run(tf.global_variables_initializer(), feed_dict={adj_info_ph: minibatch.adj})
     
-    # Train model
+    # Train model 训练
     
     train_shadow_mrr = None
     shadow_mrr = None
@@ -255,8 +300,10 @@ def train(train_data, test_data=None):
     avg_time = 0.0
     epoch_val_costs = []
 
+    # 从minibatch获取训练和验证数据的邻接表信息
     train_adj_info = tf.assign(adj_info, minibatch.adj)
     val_adj_info = tf.assign(adj_info, minibatch.test_adj)
+
     for epoch in range(FLAGS.epochs): 
         minibatch.shuffle() 
 
@@ -265,24 +312,35 @@ def train(train_data, test_data=None):
         epoch_val_costs.append(0)
         while not minibatch.end():
             # Construct feed dictionary
-            feed_dict = minibatch.next_minibatch_feed_dict()
+            # 按batch读取数据，每个batch包含边的两个端点，分别放进batch1和batch2中，
+            feed_dict = minibatch.next_minibatch_feed_dict()  
             feed_dict.update({placeholders['dropout']: FLAGS.dropout})
 
             t = time.time()
-            # Training step
+
+            # Training step 训练
+            # merged是保存了的所有的tf.summary相关的变量，用于tensorboard绘图，
+            # model.opt_op 是优化调参的操作
+            # 其他的变量
+            # 
+            #  
             outs = sess.run([merged, model.opt_op, model.loss, model.ranks, model.aff_all, 
-                    model.mrr, model.outputs1], feed_dict=feed_dict)
+                    model.mrr, model.outputs1], feed_dict=feed_dict)     # 训练
             train_cost = outs[2]
-            train_mrr = outs[5]
+            train_mrr = outs[5]   
+
+
+            # train_shadow_mrr值是一个滑动平均更新的方式
             if train_shadow_mrr is None:
                 train_shadow_mrr = train_mrr#
             else:
                 train_shadow_mrr -= (1-0.99) * (train_shadow_mrr - train_mrr)
 
             if iter % FLAGS.validate_iter == 0:
-                # Validation
+                # Validation 验证的时候，需要用验证集的邻接表信息，因此这里跑一下tf.assign的操作
                 sess.run(val_adj_info.op)
                 val_cost, ranks, val_mrr, duration  = evaluate(sess, model, minibatch, size=FLAGS.validate_batch_size)
+                # 验证完毕再切回训练集的邻接表信息
                 sess.run(train_adj_info.op)
                 epoch_val_costs[-1] += val_cost
             if shadow_mrr is None:
