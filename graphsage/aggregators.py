@@ -386,7 +386,7 @@ class SeqAggregator(Layer):
     """
 
     def __init__(self, input_dim, output_dim, model_size="small", neigh_input_dim=None,
-                 dropout=0., bias=False, act=tf.nn.relu, name=None,  concat=False, **kwargs):
+                 dropout=0., bias=False, act=tf.nn.relu, name=None, concat=False, **kwargs):
         super(SeqAggregator, self).__init__(**kwargs)
 
         self.dropout = dropout
@@ -459,6 +459,8 @@ class SeqAggregator(Layer):
         # 生成索引，生成规则为如下：1.先生成shape为[batch_size]的1维向量，具体为[1,2,3...batch_size-2,batch_size-1]
         # 2.每个元素乘以max_len
         # 3.将原来的lstm序列步长减1后再相加（数组从0开始）
+        # 该index的意义就是为了取每个batch的最后一个聚合结果，因为lstm为序列化的聚合，训练的结果是逐步从第一个
+        # 传递至最后一个，获得最后一个batch的结果就相当于获得了这个batch全部的lstm聚合结果
         index = tf.range(0, batch_size) * max_len + (length - 1)
         # 将rnn_outputs shape变为[-1,hidden_dim]，-1代表自适应降维，应该是batch_size*max_len
         flat = tf.reshape(rnn_outputs, [-1, out_size])

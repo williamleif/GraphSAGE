@@ -186,6 +186,9 @@ class NodeMinibatchIterator(object):
     num_classes -- number of output classes
     batch_size -- size of the minibatches
     max_degree -- maximum size of the downsampled adjacency lists
+    以toy-ppi数据集举例：
+    label_map为输出，维度为(14755, 121)
+    num_class为label_map的第二维，即121
     """
     def __init__(self, G, id2idx, 
             placeholders, label_map, num_classes, 
@@ -225,7 +228,7 @@ class NodeMinibatchIterator(object):
 
     def construct_adj(self):
         # 一个numpy 2dim的数组，用于存储各个节点的邻接点，最多为max_degree个邻接点
-        # adj shape: (14756, 128)
+        # adjacency shape: (14756, 128)
         adj = len(self.id2idx)*np.ones((len(self.id2idx)+1, self.max_degree))
         # (14755,)   用于存储所有节点的degree值
         deg = np.zeros((len(self.id2idx),))
