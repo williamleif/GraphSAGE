@@ -441,6 +441,11 @@ class SeqAggregator(Layer):
 
         # 进行lstm聚合rnn_outputs为结果值，rnn_states为最后一个单元的状态，这里用不上
         # 聚合后rnn_outputs shape为[batch_size,max_len,hidden_dim]
+        # lstm每个cell的输入为上个cell的状态c和上个cell的结果h与这一层的输入x相连的向量v
+        # lstm通过3个门控制每个cell的输出,3个门实际上就是3个sigmoid函数，每个门通过各自的权重矩阵控制输出的结果.
+        # 第一个门是遗忘门g1用来控制传入v中那些信息会被保留，第二个门g2输入门用来控制v哪些信息会被输入到下一个状态，第三个门g3用来控制v哪些信息会被输出
+        # 每一层的c计算方式为 (c * g1) contact g2 ,每一层的输出h计算方式为 tanh((c * g1) contact g2) * g3
+        # 传递至最后一个cell的输出即为整个输出的结果
         with tf.variable_scope(self.name) as scope:
             try:
                 rnn_outputs, rnn_states = tf.nn.dynamic_rnn(
@@ -464,7 +469,7 @@ class SeqAggregator(Layer):
         index = tf.range(0, batch_size) * max_len + (length - 1)
         # 将rnn_outputs shape变为[-1,hidden_dim]，-1代表自适应降维，应该是batch_size*max_len
         flat = tf.reshape(rnn_outputs, [-1, out_size])
-        # 根据索引将对应元素从flat取出来shape变为[index.length,hidden_dim]
+        # 根据索引将对应元素从flat取出来shape变为[index.length,hidden_dim]， index.length = batch_size
         neigh_h = tf.gather(flat, index)
 
         from_neighs = tf.matmul(neigh_h, self.vars['neigh_weights'])
