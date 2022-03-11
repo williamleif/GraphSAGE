@@ -463,8 +463,11 @@ class SampleAndAggregate(GeneralizedModel):
 
         --------
         在本实验中，就是利用这个函数，利用每个节点的度数形成概率分布，从节点集合中获取一批节点id，在后续视作负样本
-        true_classes个参数传入的是labels，但经测试，采样的结果和这个参数是无关的样子
+        true_classes个参数传入的是labels，但经测试，采样的结果和这个参数是无关的样子，而且实际是有可能会采样到负样本的
         返回的结果neg_samples里面是一个列表，每一个元素代表的是节点id
+        
+        参考 https://github.com/williamleif/GraphSAGE/issues/76， 这个里面作者说了是可能会采样到正样本
+        只是他们假设，当整个图数据集远大于邻域计算图时，采样到正样本的概率很小。
         """
 
         self.neg_samples, _, _ = (tf.nn.fixed_unigram_candidate_sampler(

@@ -18,7 +18,7 @@ mag240原数据目录：`/mnt/ogb-dataset/mag240m/data/raw`
 │   │   ├── node_label.npy   // 论文的标签
 │   │   └── node_year.npy   // 论文年份
 │   └── paper___cites___paper
-│       └── edge_index.npy  // 论文和城市的边shape=[2,num_edges]
+│       └── edge_index.npy  // 论文引用关系的边shape=[2,num_edges]
 ├── raw //空文件夹
 └── split_dict.pt    //切分训练集、验证集、测试集方式的文件，用torch读取是一个字典，keys=[‘train’,’valid’,’test’], value是node_index
 
