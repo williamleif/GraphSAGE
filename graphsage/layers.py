@@ -40,10 +40,10 @@ class Layer(object):
         __call__(inputs): Wrapper for _call()
         _log_vars(): Log all variables
 
-        最基础的层类型
-        name：定义层的名称，字符型
-        logging：布尔型，如果开的话就可以打印训练过程中，当需要查看一个张量在训练过程中值的分布情况时，可通过tf.summary.histogram()将其分布情况以直方图的形式在TensorBoard直方图仪表板上显示．
-        这里并没有参数矩阵、激活函数等值，都是在其子类中实现
+    最基础的层类型
+    name：定义层的名称，字符型
+    logging：布尔型，如果开的话就可以打印训练过程中，当需要查看一个张量在训练过程中值的分布情况时，可通过tf.summary.histogram()将其分布情况以直方图的形式在TensorBoard直方图仪表板上显示．
+    这里并没有参数矩阵、激活函数等值，都是在其子类中实现
     """
 
     def __init__(self, **kwargs):
