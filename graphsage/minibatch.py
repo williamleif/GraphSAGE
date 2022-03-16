@@ -335,6 +335,7 @@ class NodeMinibatchIterator(object):
         ret_val = self.batch_feed_dict(val_node_subset)
         return ret_val[0], ret_val[1], (iter_num+1)*size >= len(val_nodes), val_node_subset
 
+
     #返回当前是第几批次
     def num_training_batches(self):
         return len(self.train_nodes) // self.batch_size + 1
