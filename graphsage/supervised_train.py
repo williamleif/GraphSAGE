@@ -131,11 +131,12 @@ def train(train_data, test_data=None):
         num_classes = len(set(class_map.values()))
 
     if not features is None:
-        # pad with dummy zero vector
+        # pad with dummy zero vector, row wise
         features = np.vstack([features, np.zeros((features.shape[1],))])
 
     context_pairs = train_data[3] if FLAGS.random_context else None
     placeholders = construct_placeholders(num_classes)
+    #实例化 NodeMinibatch 迭代器
     minibatch = NodeMinibatchIterator(G, 
             id_map,
             placeholders, 
@@ -144,6 +145,7 @@ def train(train_data, test_data=None):
             batch_size=FLAGS.batch_size,
             max_degree=FLAGS.max_degree, 
             context_pairs = context_pairs)
+    # adjacency shape: (14756, 128)  包装为placeholder
     adj_info_ph = tf.placeholder(tf.int32, shape=minibatch.adj.shape)
     adj_info = tf.Variable(adj_info_ph, trainable=False, name="adj_info")
 
