@@ -118,13 +118,15 @@ class SupervisedGraphsage(models.SampleAndAggregate):
         clipped_grads_and_vars = [(tf.clip_by_value(grad, -5.0, 5.0) if grad is not None else None, var) 
                 for grad, var in grads_and_vars]
         self.grad, _ = clipped_grads_and_vars[0]
+
         self.opt_op = self.optimizer.apply_gradients(clipped_grads_and_vars)
+
         self.preds = self.predict()
 
     def _loss(self):
         # Weight decay loss
 
-        #L2正则化项 
+        # L2正则化项 
         for aggregator in self.aggregators:
             for var in aggregator.vars.values():
                 self.loss += FLAGS.weight_decay * tf.nn.l2_loss(var)
