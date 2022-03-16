@@ -97,7 +97,6 @@ class Model(object):
         print("Model restored from file: %s" % save_path)
 
 
-
 # 多层感知机，是一个基础的深度模型
 class MLP(Model):
     """ A standard multi-layer perceptron """
@@ -301,7 +300,10 @@ class SampleAndAggregate(GeneralizedModel):
         """ Sample neighbors to be the supportive fields for multi-layer convolutions.
 
         函数功能：对输入的每一个节点，根据采样跳数目，递归地采样邻居，作为该节点的支持域
+        输入：
+        inputs：一批次的节点id
 
+        输出：
         samples是一个列表，列表的每一个元素又是一个列表，长度不一，存放的是该跳数下的所有的邻居节点id
         示例：
         samples[0] 维度是 [batch_size,] ，即是自身
@@ -309,11 +311,11 @@ class SampleAndAggregate(GeneralizedModel):
         samples[2] [layer_infos[1].num_samples * layer_infos[0].num_samples * batch_size,]
         以此类推
 
-        # support_sizes 存的是的各层的采样数目，是一个列表，每个元素是一个正整数
-        # support_sizes[0] = 1， 意义是初始状态，邻居就是节点本身
-        # support_sizes[1] = layer_infos[-1].num_samples * 1， 本实验中为10
-        # support_sizes[2] = layer_infos[-1].num_samples * layer_infos[-2].num_samples * 1， 本实验中为10*15=250
-        # 以此类推，从最外层的邻居数依次往内乘
+        support_sizes 存的是的各层的采样数目，是一个列表，每个元素是一个正整数
+        support_sizes[0] = 1， 意义是初始状态，邻居就是节点本身
+        support_sizes[1] = layer_infos[-1].num_samples * 1， 本实验中为10
+        support_sizes[2] = layer_infos[-1].num_samples * layer_infos[-2].num_samples * 1， 本实验中为10*15=250
+        以此类推，从最外层的邻居数依次往内乘
 
         Args:
             inputs: batch inputs
@@ -329,7 +331,7 @@ class SampleAndAggregate(GeneralizedModel):
         support_sizes = [support_size]
 
         for k in range(len(layer_infos)):  # k为跳数，实验中k = 0 1
-            t = len(layer_infos) - k - 1 # t = 1 0
+            t = len(layer_infos) - k - 1  # t = 1 0
 
             # 每一跳的邻居数目是前一跳的邻居节点数*该层的采样数，有个累乘的逻辑
             support_size *= layer_infos[t].num_samples
@@ -340,7 +342,7 @@ class SampleAndAggregate(GeneralizedModel):
             node = sampler((samples[k], layer_infos[t].num_samples))
 
             # reshape成一维数组，再添加进samples中
-            samples.append(tf.reshape(node, [support_size * batch_size, ])) 
+            samples.append(tf.reshape(node, [support_size * batch_size, ]))
 
             # 同时记录好每一层的采样数
             support_sizes.append(support_size)
@@ -383,15 +385,14 @@ class SampleAndAggregate(GeneralizedModel):
 
         # length: number of layers + 1
         # 遍历samples列表，根据每一个元素中存放的节点id，从全量的特征矩阵里获取所需的节点特征
-     
+
         hidden = [tf.nn.embedding_lookup(
             input_features, node_samples) for node_samples in samples]
         # hidden[0] [batch, num_features]
         # hidden[1] [layer_infos[1].num_samples * batch_size, num_features]
         # hidden[2] [layer_infos[1].num_samples * layer_infos[0].num_samples * batch_size, num_features]
         # num_features表示的是特征维度，实验中为50
-        
-        
+
         # 输入batch1的时候，该项为aggregators = None， 输入batch2或者neg_samples的时候，aggregators为batch1生成的aggregators
         # 即他们用的是同一个聚合器
         new_agg = aggregators is None
@@ -437,9 +438,10 @@ class SampleAndAggregate(GeneralizedModel):
                 # 因为hidden[i]存放为二维，而mean_aggregator是需要将邻居节点特征平均，
                 # 因此需要将它reshape一下，方便在后面的处理中取所有邻居的均值
                 # neigh_dims = [batch_size * 当前跳数的支持节点数，当前层的需要采样的邻居节点数，特征数]
-                #  
+                #
                 neigh_dims = [batch_size * support_sizes[hop],
-                              num_samples[len(num_samples) - hop - 1],  # 这个维度，对应sample函数里的 t = len(layer_infos) - k - 1
+                              # 这个维度，对应sample函数里的 t = len(layer_infos) - k - 1
+                              num_samples[len(num_samples) - hop - 1],
                               dim_mult*dims[layer]]
                 h = aggregator((hidden[hop],
                                 tf.reshape(hidden[hop + 1], neigh_dims)))
@@ -463,11 +465,10 @@ class SampleAndAggregate(GeneralizedModel):
 
         --------
         在本实验中，就是利用这个函数，利用每个节点的度数形成概率分布，从节点集合中获取一批节点id，在后续视作负样本
-        true_classes个参数传入的是labels，但经测试，采样的结果和这个参数是无关的样子，而且实际是有可能会采样到负样本的
+        true_classes个参数传入的是labels，但经测试，采样的结果和这个参数是无关的样子，而且实际是有可能会采样到正样本的
         返回的结果neg_samples里面是一个列表，每一个元素代表的是节点id
         
-        参考 https://github.com/williamleif/GraphSAGE/issues/76， 这个里面作者说了是可能会采样到正样本
-        只是他们假设，当整个图数据集远大于邻域计算图时，采样到正样本的概率很小。
+        参考 https://github.com/williamleif/GraphSAGE/issues/76， 这个里面作者说了是可能会采样到正样本，只是他们假设，当整个图数据集远大于邻域计算图时，采样到正样本的概率很小。
         """
 
         self.neg_samples, _, _ = (tf.nn.fixed_unigram_candidate_sampler(
@@ -486,8 +487,8 @@ class SampleAndAggregate(GeneralizedModel):
         samples1, support_sizes1 = self.sample(self.inputs1, self.layer_infos)
         samples2, support_sizes2 = self.sample(self.inputs2, self.layer_infos)
 
-        # 每层需要的采样数 实验中是[25,10] 
-        
+        # 每层需要的采样数 实验中是[25,10]
+
         num_samples = [
             layer_info.num_samples for layer_info in self.layer_infos]
 
@@ -510,7 +511,6 @@ class SampleAndAggregate(GeneralizedModel):
                                              concat=self.concat, model_size=self.model_size)
 
         dim_mult = 2 if self.concat else 1
-
 
         # 这里生成了一个预测层，注意参数bilinear_weights,这个值如果为True，则会生成一个可训练的参数矩阵，在后续的计算loss会用到
         # 但是本实验在这里设置了否，则无参数矩阵，本质上就是一个计算loss的类，完全不影响上述aggregator的输出
@@ -545,8 +545,8 @@ class SampleAndAggregate(GeneralizedModel):
         # 梯度裁剪，若梯度大于5则置为5，小于-5则置为-5，
         clipped_grads_and_vars = [(tf.clip_by_value(grad, -5.0, 5.0) if grad is not None else None, var)
                                   for grad, var in grads_and_vars]
-        
-        # clipped_grads_and_vars 是一个元组,(grad,var),表示梯度值和变量值
+
+        # clipped_grads_and_vars 是一个元组,(grad,var),表示梯度值和变量值，这里只取了grad
         self.grad, _ = clipped_grads_and_vars[0]
 
         # 利用裁剪后的梯度更新模型参数
@@ -597,20 +597,30 @@ class SampleAndAggregate(GeneralizedModel):
         self.aff_all = tf.concat(axis=1, values=[self.neg_aff, _aff])
         size = tf.shape(self.aff_all)[1]
 
-        # ④利用top_k函数，两步计算出正样本对之间的亲和度的排名，
+        # ④利用top_k函数，两步计算出正样本对之间的亲和度的排名
+        #  tf.nn.top_k函数是根据输入的数组，返回最大的k个数和他们的序号
+        # 这里两次利用tok_k函数，得到rank值
         # self.ranks中表示的是每个顶点和负样本、正样本之间的亲和度排名，维度:[batch_size, neg_samples_size + 1]
+        # 示例：
+        # result = tf.constant([0.5, 0.9, 0.3, 0.4, 0.6, 0.8, 0.7, 0.1])
+        # _, indices_of_ranks = tf.nn.top_k(result, k=len(result))
+        # indices_of_ranks.numpy() : [1, 5, 6, 4, 0, 3, 2, 7]   按顺序看，表示最大数序号为1，第二大的数序号为5 ...
+        # _, ranks = tf.nn.top_k(-indices_of_ranks, k=len(result))
+        # ranks.numpy() : [4, 0, 6, 5, 3, 1, 2, 7]  这里得到的就是result中每个元素的排名序号，0表示最大，以此类推
+        #
         _, indices_of_ranks = tf.nn.top_k(self.aff_all, k=size)
         _, self.ranks = tf.nn.top_k(-indices_of_ranks, k=size)
 
-        # 取self.ranks最后一列，即正样本的排名序数，因为是从0算起的，所以要+1
-        # mrr = 1.0/rank
+        # 取self.ranks最后一列，即正样本的排名序数，因为是从0算起的，所以要+1 
+        # Mean Reciprocal Rank(MRR) = 1.0/rank
+        # 通过正确的检索结果值在所有检索结果中的排名来评估排序性能， rank越大，mrr值越小
+
         self.mrr = tf.reduce_mean(
             tf.div(1.0, tf.cast(self.ranks[:, -1] + 1, tf.float32)))
         tf.summary.scalar('mrr', self.mrr)
 
 
-
-#  
+#
 class Node2VecModel(GeneralizedModel):
     def __init__(self, placeholders, dict_size, degrees, name=None,
                  nodevec_dim=50, lr=0.001, **kwargs):

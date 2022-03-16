@@ -70,10 +70,20 @@ def log_dir():
 
 # Define model evaluation function
 def evaluate(sess, model, minibatch_iter, size=None):
+    """
+    评估函数
+    输入：
+    model：训练好了的模型
+    minibatch_iter：迭代类
+    size： batch_size
+    """
+
     t_test = time.time()
 
     # 评估阶段，这里传入的是验证集
     feed_dict_val = minibatch_iter.val_feed_dict(size)
+
+    # 这里只跑模型的loss等指标
     outs_val = sess.run([model.loss, model.ranks, model.mrr], 
                         feed_dict=feed_dict_val)
     return outs_val[0], outs_val[1], outs_val[2], (time.time() - t_test)
@@ -288,7 +298,7 @@ def train(train_data, test_data=None):
     merged = tf.summary.merge_all()
     summary_writer = tf.summary.FileWriter(log_dir(), sess.graph)
      
-    # Init variables
+    # Init variables 初始化参数
     sess.run(tf.global_variables_initializer(), feed_dict={adj_info_ph: minibatch.adj})
     
     # Train model 训练
@@ -300,7 +310,9 @@ def train(train_data, test_data=None):
     avg_time = 0.0
     epoch_val_costs = []
 
-    # 从minibatch获取训练和验证数据的邻接表信息
+    # 利用tf.assgin函数，将邻接表数据赋值给adj_info
+    # 训练的时候，用训练的邻接表，验证的时候用验证的邻接表
+    # 此时操作并不会执行，在之后sess.run的时候才会真正执行
     train_adj_info = tf.assign(adj_info, minibatch.adj)
     val_adj_info = tf.assign(adj_info, minibatch.test_adj)
 
@@ -321,7 +333,6 @@ def train(train_data, test_data=None):
             # Training step 训练
             # merged是保存了的所有的tf.summary相关的变量，用于tensorboard绘图，
             # model.opt_op 是优化调参的操作
-            # 其他的变量
             # 
             #  
             outs = sess.run([merged, model.opt_op, model.loss, model.ranks, model.aff_all, 
@@ -331,16 +342,21 @@ def train(train_data, test_data=None):
 
 
             # train_shadow_mrr值是一个滑动平均更新的方式
+            # 在得到该批次数据的mrr的时候，不直接更新，而是将历史的mrr值也引入进来计算，避免评估结果抖动较大
+            # 参考 https://www.pianshen.com/article/11191400472/ 
             if train_shadow_mrr is None:
                 train_shadow_mrr = train_mrr#
             else:
+                # 1-0.99中，0.99为衰减率 
                 train_shadow_mrr -= (1-0.99) * (train_shadow_mrr - train_mrr)
 
             if iter % FLAGS.validate_iter == 0:
-                # Validation 验证的时候，需要用验证集的邻接表信息，因此这里跑一下tf.assign的操作
+                # Validation 验证的时候，需要用验证集的邻接表信息，因此这里跑一下tf.assign的操作, 将验证的邻接表赋给adj_info
+                  
                 sess.run(val_adj_info.op)
                 val_cost, ranks, val_mrr, duration  = evaluate(sess, model, minibatch, size=FLAGS.validate_batch_size)
                 # 验证完毕再切回训练集的邻接表信息
+
                 sess.run(train_adj_info.op)
                 epoch_val_costs[-1] += val_cost
             if shadow_mrr is None:
