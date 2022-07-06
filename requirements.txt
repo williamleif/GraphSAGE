@@ -8,7 +8,7 @@ funcsigs==1.0.2
 futures==3.2.0
 gast==0.2.0
 grpcio==1.12.1
-html5lib==0.9999999
+html5lib==0.999999999
 Markdown==2.6.11
 mock==2.0.0
 networkx==1.11
